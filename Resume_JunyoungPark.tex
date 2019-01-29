@@ -1,51 +1,36 @@
-% Resume LaTex
-% Author: Junyoung Park (junyoung.park@kaist.ac.kr)
-% Date: 2015/07/21
+% JUNYOUNG PARK RESUME TEX
+% Author: Junyoung Park (mail@jyp.me)
+% History:
+%   2015/07/21 - first version in KAIST
+%   2019/01/26 - second major update in UXFactory, Inc.
 
 %---------------------------------------------------------------------------
 % PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
 %---------------------------------------------------------------------------
 \documentclass{resume} % Use the custom resume.cls style
 
-\usepackage[left=0.75in,top=0.6in,right=0.75in,bottom=0.6in]{geometry} % Document margins
+\usepackage[left=0.7in,top=0.6in,right=0.7in,bottom=0.6in]{geometry} % Document margins
 
-\name{Junyoung~Park}
-\address{Semiconductor System Lab}
-\address{\#1233 E3-2 (Dept. of Electrical Engineering), KAIST}
-\address{Daejeon 305-701, Republic of Korea}
-\phone{+82-10-2542-5500}
-\email{junyoung.park@kaist.ac.kr}
-\webpage{http://www.junyoungpark.com}
+% to use the fontspec package, compile with luluatex only
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+
 \begin{document}
 
-\begin{section}{Objective}
-To obtain a challenging position in the field of software-hardware co-design for application-specific SoC
-\end{section}
+% top information
+\name{Junyoung~Park}
+\job{AI System-on-Chip Engineer \& Director}
 
-%---------------------------------------------------------------------------
-% MAJOR RESEARCH SECTION
-%---------------------------------------------------------------------------
+\contactinfo {
+  \location{Seongnam-si 13524, Gyeonggi-do, Republic of Korea}
+  \phone{+82-10-2542-5500}
+  \email{mail@jyp.me}
+  \homepage{http://www.junyoungpark.com}
+  \linkedin{https://www.linkedin.com/in/parkjunyoung}
+}
 
-\begin{section}{Major Research Experience}
-
-\begin{subsection}{System-on-Chip Design}{}{}{}
-\item An intelligent Network-on-Chip SoC based on Machine Learning Approaches (TCAS-I 2014)
-\item A mobile vision SoC integrating 21 heterogeneous cores for context-aware object recognition (ISSCC 2013)
-\item An advanced driver assistant system SoC with two chip integration (JSSC 2012)
-\item Participated in the design of 6 SoCs over 5 years
-\end{subsection}
-
-\begin{subsection}{Network-on-Chip Analysis}{}{}{}
-\item A system-C TLM based cycle-accurate simulator for Network-on-Chip in many-core vision processors (JSSC 2011)
-\item Top-level system network exploration \& verification in the application processor during the research internship
-\end{subsection}
-
-%\begin{subsection}{Embedded Platform Design}{}{}{}
-%\item Worked on a mobile vision platform for unmanned aerial vehicle with integrated SoC, FPGA, and camera
-%\item Experienced embedded system board design, including system specification, evaluation and debugging
-%\end{subsection}
-
-\end{section}
+%% Make the header extend all the way to the right, if you want. 
+\makecvheader
 
 %---------------------------------------------------------------------------
 % WORK SECTION
@@ -53,12 +38,17 @@ To obtain a challenging position in the field of software-hardware co-design for
 
 \begin{section}{Work Experience}
 
-\begin{subsection}{KAIST, Daejeon, Korea}{Jan. 2015 - Present}{Postdoctoral Researcher}{}
-\item Advisor: Hoi-Jun Yoo
+\begin{subsection}{UX Factory, Inc.}{Aug. 2015 - Present}{Co-founder and Chief Executive Officier}{}
+\item Created a company that delivers the world's leading AI solutions derived from SW-SoC technology
+\item Participated in 6 government R\&D projects for AI \& SoC with major Korean fabless companies
+\end{subsection}
+    
+\begin{subsection}{KAIST}{Jan. 2015 - Aug. 2015}{Postdoctoral Fellow}{}
+\item Supervisor: Hoi-Jun Yoo
 \item SoC architecture exploration for Vision \& Deep Learning in the hardware-software codesign methodology
 \end{subsection}
 
-\begin{subsection}{Samsung Mobile Processor Innovation Lab, Dallas TX, US}{Sep. 2014 - Dec. 2014}{Research Internship}{}
+\begin{subsection}{Samsung Mobile Processor Innovation Lab}{Sep. 2014 - Dec. 2014}{Research Intern}{}
 \item Manager: Seok-Jun Lee
 \item Established a System-C TLM based simulator for early top-level system exploration  in many-core SoCs
 \end{subsection}
@@ -98,7 +88,7 @@ To obtain a challenging position in the field of software-hardware co-design for
 %---------------------------------------------------------------------------
 % AWARDS AND ACTIVITY SECTION
 %---------------------------------------------------------------------------
-\begin{section}{Awards and Activities}
+\begin{section}{Awards and Invited Talks}
 
 \begin{subsection}{Awards}{}{}{}
 \item Kim Choong-Ki Scholarship Award for Outstanding Research Accomplishments \hfill Apr. 2013
@@ -108,8 +98,29 @@ To obtain a challenging position in the field of software-hardware co-design for
 \item Korean Science \& Technology Research Scholarship Award \hfill Feb. 2009 - Feb. 2011
 \end{subsection}
 
-\begin{subsection}{Activities}{}{}{}
-\item Teaching/Research Assistant in Electrical Engineering, KAIST \hfill Feb. 2009 - Aug. 2014
+\begin{subsection}{Invited Talks}{}{}{}
+
+\item Deep learning SW framework and ASIC for AI SoC,
+{\small\textit{Electronics and Telecommunications Research Institute.}, Sept., 2018.}
+
+\item Embedded Deep Neural Network SoC,
+{\small\textit{Korea Electronics Technology Institute}, Sept., 2018.}
+
+\item Embedded Deep Neural Network SoC,
+{\small\textit{Electronics and Telecommunications Research Institute}, Mar., 2017.}
+
+\item Embedded Deep Neural Network SoC:  deep learning to mobile devices,
+{\small\textit{Deep Neural Network SoC Workshop}, Aug., 2016.}
+
+\item Low-power Pattern recognition SoC with bio-inspired architecture for intelligent cognitive service,
+{\small\textit{IEEE International Conference on Intelligent Robots and Systems (IROS) Workshops}, Sept., 2015.}
+
+\item An energy-efficient SoC for real-time context-aware object recognition,
+{\small\textit{Samsung Research America}, Sept., 2014.}
+
+\item An energy-efficient heterogeneous many-core processor for real-world object recognition,
+{\small\textit{Qualcomm}, Feb., 2013.}
+
 \end{subsection}
 
 \end{section}
@@ -123,53 +134,65 @@ To obtain a challenging position in the field of software-hardware co-design for
 
 \begin{subsection}{Journal Papers}{}{}{}
 
+\item An Energy-Efficient Embedded Deep Neural Network Processor for High Speed Visual Attention in Mobile Vision Recognition SoC,
+\emph{IEEE Journal of Solid-State Circuits, vol.PP, no.99, pp.1-9}, July. 2016. \\
+{\small S. Park, I. Hong, \underline{\bf Junyoung Park}, and H.-J. Yoo.}
+
+\item A 0.5 V 54 μW Ultra-Low-Power Object Matching Processor for Micro Air Vehicle Navigation,
+\emph{IEEE Transactions on Circuits and Systems I: Regular Papers}, vol.63, no.3, pp.359-369, Mar. 2016. \\
+{\small Y. Kim, I. Hong, \underline{\bf Junyoung Park}, H.-J. Yoo.}
+
+\item An Energy-efficient and Scalable Deep Learning/Inference Processor With Tetra-Parallel MIMD Architecture for Big Data Applications,
+\emph{IEEE Transactions on Biomedical Circuits and Systems}, vol.9, no.6, pp.838-848, Dec. 2015. \\
+{\small S. Park, \underline{\bf Junyoung Park}, K. Bong, D. Shin, J. Lee, S. Choi, H.-J. Yoo.}
+
 \item A Vocabulary Forest Object Matching Processor With 2.07 M-Vector/s Throughput and 13.3 nJ/Vector Per-Vector Energy for Full-HD 60 fps Video Object Recognition, \emph{IEEE Journal of Solid-State Circuits}, vol.50, no.4, pp.1059-1069, Apr. 2015. \\
-K.J. Lee, G. Kim, \underline{\bf Junyoung Park}, and H.-J. Yoo.
+{\small K.J. Lee, G. Kim, \underline{\bf Junyoung Park}, and H.-J. Yoo.}
 
 \item Intelligent Network-on-Chip With Online Reinforcement Learning for Portable HD Object Recognition Processor, \emph{IEEE Transactions on Circuits and Systems I: Regular Papers}, vol.61, no.2, pp.476-484, Feb. 2014. \\
-\underline{\bf Junyoung Park}, I. Hong, G. Kim, B.-G. Nam, and H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, I. Hong, G. Kim, B.-G. Nam, and H.-J. Yoo.}
 
 \item A 320 mW 342 GOPS Real-Time Dynamic Object Recognition Processor for HD 720p Video Streams, \emph{IEEE Journal of Solid-State Circuits}, vol.48, no.1, pp.33-45, Jan. 2013. \\
-J. Oh, G. Kim, \underline{\bf Junyoung Park}, I. Hong, S. Lee, J.-Y. Kim, J.-H. Woo, H.-J. Yoo.
+{\small J. Oh, G. Kim, \underline{\bf Junyoung Park}, I. Hong, S. Lee, J.-Y. Kim, J.-H. Woo, H.-J. Yoo.}
 
 \item Low-Power, Real-Time Object-Recognition Processors for Mobile Vision Systems \emph{IEEE Micro}, vol.32, no.6, pp.38-50, Nov.-Dec. 2012. \\
-J. Oh, G. Kim, I. Hong, \underline{\bf Junyoung Park}, S. Lee, J.-Y. Kim, J.-H. Woo, H.-J. Yoo.
+{\small J. Oh, G. Kim, I. Hong, \underline{\bf Junyoung Park}, S. Lee, J.-Y. Kim, J.-H. Woo, H.-J. Yoo.}
 
 \item A 92-mW Real-Time Traffic Sign Recognition System With Robust Illumination Adaptation and Support Vector Machine, \emph{IEEE Journal of Solid-State Circuits}, vol.47, no.11, pp.2711-2723, Nov. 2012. \\
-\underline{\bf Junyoung Park}, J. Kwon, J. Oh, S. Lee, J.-Y. Kim, and H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, J. Kwon, J. Oh, S. Lee, J.-Y. Kim, and H.-J. Yoo.}
 
 \item A 345 mW Heterogeneous Many-Core Processor With an Intelligent Inference Engine for Robust Object Recognition \emph{IEEE Journal of Solid-State Circuits}, vol.46, no.1, pp.42-51, Jan. 2011. \\
-S. Lee, J. Oh, \underline{\bf Junyoung Park}, J. Kwon, M. Kim, H.-J. Yoo.
+{\small S. Lee, J. Oh, \underline{\bf Junyoung Park}, J. Kwon, M. Kim, H.-J. Yoo.}
 
 \item A 118.4 GB/s Multi-Casting Network-on-Chip With Hierarchical Star-Ring Combined Topology for Real-Time Object Recognition, \emph{IEEE Journal of Solid-State Circuits}, vol.45, no.7, pp.1399-1409, July 2010. \\
-J.-Y. Kim, \underline{\bf Junyoung Park}, S. Lee, M. Kim, J. Oh, and H.-J. Yoo.
+{\small J.-Y. Kim, \underline{\bf Junyoung Park}, S. Lee, M. Kim, J. Oh, and H.-J. Yoo.}
 
 \end{subsection}
 
 \begin{subsection}{Conference Papers (First Authored Only - 25 Papers in Total)}{}{}{}
 
 \item A High-throughput 16x Super Resolution Processor for Real-Time Object Recognition SoC, \emph{IEEE European Solid-State Circuits Conference}, pp.259-262, 16-20 Sep. 2013. \\
-\underline{\bf Junyoung Park}, B.-G. Nam, H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, B.-G. Nam, H.-J. Yoo.}
 
 \item A multi-granularity parallelism object recognition processor with content-aware fine-grained task scheduling, \emph{IEEE Symposium on Low-Power and High-Speed Chips}, pp.1-3, 17-19 April 2013. \\
-\underline{\bf Junyoung Park}, I. Hong, G. Kim, Y. Kim, K. Lee, S. Park, K. Bong, H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, I. Hong, G. Kim, Y. Kim, K. Lee, S. Park, K. Bong, H.-J. Yoo.}
 
 \item A 646 GOPS/W Multi-classifier Many-core Processor with Cortex-like Architecture for Super-Resolution Recognition, \emph{IEEE International Solid-State Circuits Conference}, Feb., 2013. \\
-\underline{\bf Junyoung Park}, I. Hong, G. Kim, Y. Kim, K. Lee, S. Park, K. Bong, and H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, I. Hong, G. Kim, Y. Kim, K. Lee, S. Park, K. Bong, and H.-J. Yoo.}
 
 \item Online Reinforcement Learning NoC for Portable HD Object Recognition Processor, \emph{IEEE Custom Integrated Circuits Conference}, Sep., 2012. \\
-\underline{\bf Junyoung Park}, I. Hong, G. Kim, J. Oh, S. Lee, H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, I. Hong, G. Kim, J. Oh, S. Lee, H.-J. Yoo.}
 
 \item A 92mW Real-Time Traffic Sign Recognition System with Robust Light and Dark Adaptation, \emph{IEEE Asian Solid-state Circuit Conference}, Nov., 2011. \\
-\underline{\bf Junyoung Park}, J. Kwon, J. Oh, S. Lee, H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, J. Kwon, J. Oh, S. Lee, H.-J. Yoo.}
 
 \item A 30fps Stereo Matching Processor Based on Belief Propagation with Disparity-Parallel PE Array Architecture, \emph{IEEE International Symposium on Circuits and Systems}, Mar., 2010. \\
-\underline{\bf Junyoung Park}, S. Lee, H.-J. Yoo.
+{\small \underline{\bf Junyoung Park}, S. Lee, H.-J. Yoo.}
 
 \end{subsection}
 
 \begin{subsection}{Patents}{}{}{}
-\item Memory Management in Support Vector Machine Processor, Korean Patent NO. 10-1190000, 2012.
+\item 7 patents for low-power circuits and systems: 3 granted and 4 pending
 \end{subsection}
 
 \end{section}
@@ -178,22 +201,22 @@ J.-Y. Kim, \underline{\bf Junyoung Park}, S. Lee, M. Kim, J. Oh, and H.-J. Yoo.
 %	TECHNICAL STRENGTHS SECTION
 %---------------------------------------------------------------------------
 
-\begin{section}{Skills}
+% \begin{section}{Skills}
 
-\begin{tabular}{ @{} >{\bfseries}l @{\hspace{6ex}} l }
-Computer Languages & Verilog HDL(incl. SystemVerilog), C/C++, JAVA, Python, Perl\\
-EDA Tools & Front-to-back full chip implementation (RTL/schematic to P\&R) \\
-\end{tabular}
+% \begin{tabular}{ @{} >{\bfseries}l @{\hspace{6ex}} l }
+% Computer Languages & Verilog HDL(incl. SystemVerilog), C/C++, JAVA, Python, Perl\\
+% EDA Tools & Front-to-back full chip implementation (RTL/schematic to P\&R) \\
+% \end{tabular}
 
-\end{section}
+% \end{section}
 
-\begin{section}{Languages}
-Native Korean \& Fluent English
-\end{section}
+% \begin{section}{Languages}
+% Native Korean \& Fluent English
+% \end{section}
 
-\begin{section}{References}
-Available upon Request
-\end{section}
+% \begin{section}{References}
+% Available upon Request
+% \end{section}
 
 %----------------------------------------------------------------------------------------
 %	EXAMPLE SECTION
