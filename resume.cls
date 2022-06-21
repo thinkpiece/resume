@@ -12,7 +12,7 @@
 \usepackage{array} % required for boldface (\bf and \bfseries) tabular columns
 \usepackage{ifthen} % required for ifthenelse statements
 \usepackage{tabularx} % required for tabularx
-\usepackage{fontawesome} % required for icon
+\usepackage{fontawesome5} % required for icon
 \usepackage{xcolor}
 \pagestyle{empty} % suppress page numbers
 
