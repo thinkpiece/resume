@@ -14,6 +14,8 @@
 \usepackage{tabularx} % required for tabularx
 \usepackage{fontawesome5} % required for icon
 \usepackage{xcolor}
+\usepackage[hidelinks]{hyperref} % clickable links without borders
+\urlstyle{same}
 \pagestyle{empty} % suppress page numbers
 
 %---------------------------------------------------------------------------
@@ -37,11 +39,11 @@
 \newcommand{\name}[1]{\def\@name{#1}}
 \newcommand{\job}[1]{\def\@job{#1}}
 % contact info
-\newcommand{\email}[1]{\printinfo{\emailsymbol}{#1}}
-\newcommand{\phone}[1]{\printinfo{\phonesymbol}{#1}}
-\newcommand{\homepage}[1]{\printinfo{\homepagesymbol}{#1}}
+\newcommand{\email}[1]{\printinfo{\emailsymbol}{\href{mailto:#1}{#1}}}
+\newcommand{\phone}[1]{\printinfo{\phonesymbol}{\href{tel:#1}{#1}}}
+\newcommand{\homepage}[1]{\printinfo{\homepagesymbol}{\href{#1}{#1}}}
 \newcommand{\location}[1]{\printinfo{\locationsymbol}{#1}}
-\newcommand{\linkedin}[1]{\printinfo{\linkedinsymbol}{#1}}
+\newcommand{\linkedin}[1]{\printinfo{\linkedinsymbol}{\href{#1}{#1}}}
 
 \newcommand{\contactinfo}[1]{\def\@contactinfo{#1}}
 

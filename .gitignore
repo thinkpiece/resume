@@ -1,24 +1,14 @@
-#################
-## LaTex
-#################
-
+# LaTeX build artifacts
 *.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
 *.log
 *.out
+*.synctex.gz
+*.toc
+texput.log
 
-#################
-## O/S specific
-#################
-
-# Windows image file caches
-Thumbs.db
-
-# Folder config file
-Desktop.ini
-.DS_Store
-
-#############
-## Python
-#############
-
-*.py[co]
+# Generated exports
+html_output.html

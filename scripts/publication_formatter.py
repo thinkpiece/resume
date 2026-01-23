@@ -1,86 +1,166 @@
 """
 Copyright (c) 2015 Junyoung Park
 
-Publication Formatter from BibTex files
+Publication Formatter from BibTeX files.
 """
 
-import bibtexparser
-import sys
+from __future__ import annotations
+
+import argparse
 import os
-from operator import itemgetter
 import re
-# bibtex_database_entries
+import sys
+import textwrap
+from typing import Any, Dict, Iterable, List, Optional, Set
+
+import bibtexparser
+
+DEFAULT_HIGHLIGHT_NAME = os.environ.get("HIGHLIGHT_NAME", "Junyoung Park")
+Publication = Dict[str, Any]
+
+
+def _year_key(paper: Publication) -> int:
+    try:
+        return int(paper.get("year", 0))
+    except (TypeError, ValueError):
+        return 0
 
 
 class PublicationFormatter:
-    def __init__(self, publication_list):
-        self.conference_list = self.__extract_conference(publication_list)
-        self.journal_list = self.__extract_journal(publication_list)
+    def __init__(
+        self,
+        publication_list: Iterable[Publication],
+        highlight_name: str = DEFAULT_HIGHLIGHT_NAME,
+    ):
+        self.highlight_name = highlight_name
+        normalized = [self._normalize_entry(entry) for entry in publication_list]
+        self.conference_list = self._extract(normalized, {"inproceedings"})
+        self.journal_list = self._extract(normalized, {"article"})
 
-    def __extract_conference(self, publication_list):
-        conference_list = [paper for paper in publication_list
-                           if paper['type'] == 'inproceedings']
-        self.__refine_author_list(conference_list)
-        return sorted(conference_list, key=itemgetter('year'), reverse=True)
+    def _extract(
+        self, publication_list: List[Publication], allowed_types: Set[str]
+    ) -> List[Publication]:
+        filtered = [
+            paper for paper in publication_list if paper.get("entrytype") in allowed_types
+        ]
+        return sorted(filtered, key=_year_key, reverse=True)
 
-    def __extract_journal(self, publication_list):
-        journal_list = [paper for paper in publication_list
-                        if paper['type'] == 'article']
-        self.__refine_author_list(journal_list)
-        return journal_list
+    def _normalize_entry(self, entry: Publication) -> Publication:
+        normalized = dict(entry)
+        entry_type = entry.get("ENTRYTYPE") or entry.get("type") or ""
+        normalized["entrytype"] = entry_type.lower()
 
-    def __refine_author_list(self, paper_list):
-        for paper in paper_list:
-            authors = [name.strip() for name in paper['author'].split('and')]
-            authors_refined = [self.__refine_author_name(name)
-                               for name in authors]
-            authors_str = ", ".join(name for name in authors_refined)
-            paper['author'] = authors_str
+        authors = entry.get("author")
+        if authors:
+            normalized["author"] = ", ".join(
+                self._refine_author_name(name.strip())
+                for name in authors.split("and")
+                if name.strip()
+            )
 
-    def __refine_author_name(self, name):
-        """Emphasize my name."""
-        if name == "Junyoung Park":
-            name = "<u>Junyoung Park</u>"
-        else:
-            name = re.sub(r'([A-Z])[a-z]*([ -])', r'\1.\2', name)
-        return name
+        return normalized
 
-    # TODO add more export methods for other formats such as TeX, markdown, ...
-    def export_conference(self, output):
-        for publication in self.conference_list:
-            output.write("""
+    def _refine_author_name(self, name: str) -> str:
+        """Emphasize my name and use initials for co-authors."""
+        if not name:
+            return name
+        if name == self.highlight_name:
+            return f"<u>{name}</u>"
+        return re.sub(r"\b([A-Z])[A-Za-z]*([ -])", r"\1.\2", name)
+
+    def _format_month_year(self, publication: Publication) -> str:
+        month = publication.get("month", "")
+        month = month.rstrip(". ")
+        year = publication.get("year", "")
+        if month and year:
+            return f"{month}. {year}"
+        return year or month
+
+    def _render_html_item(self, publication: Publication) -> str:
+        url = publication.get("bdsk-url-1") or publication.get("url")
+        link_html = (
+            f' <a href="{url}"><span class="glyphicon glyphicon-link"></span></a>'
+            if url
+            else ""
+        )
+        venue = publication.get("booktitle") or publication.get("journal") or "#empty#"
+        schedule = self._format_month_year(publication)
+        schedule = f", {schedule}" if schedule else ""
+        authors = publication.get("author", "#empty#")
+
+        return textwrap.dedent(
+            f"""\
             <li>
               <dl>
-                <dt>{title}</dt>
-                <dd><em>{booktitle}</em>, {month}., {year}. <a href="{url}">\
-<span class="glyphicon glyphicon-link"></span></a><br>
+                <dt>{publication.get("title", "#empty#")}</dt>
+                <dd><em>{venue}</em>{schedule}{link_html}<br>
                   {authors}.
                 </dd>
               </dl>
-            </li>""".format(title=publication.get('title', '#empty#'),
-                            booktitle=publication.get('booktitle', '#empty#'),
-                            month=publication.get('month', '#empty#'),
-                            year=publication.get('year', '#empty#'),
-                            url=publication.get('bdsk-url-1', '#empty#'),
-                            authors=publication.get('author', '#emtpy#')))
+            </li>"""
+        )
+
+    def _export_publications(
+        self, publications: Iterable[Publication], output
+    ) -> None:
+        for publication in publications:
+            output.write(self._render_html_item(publication))
+            output.write("\n")
+
+    def export_conference(self, output) -> None:
+        self._export_publications(self.conference_list, output)
+
+    def export_journal(self, output) -> None:
+        self._export_publications(self.journal_list, output)
 
 
-def main(argv):
-    if len(argv) < 2:
-        sys.stderr.write("Usage: %s <filename>" % (argv[0],))
-        return 1
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Convert BibTeX entries to an HTML list for the resume."
+    )
+    parser.add_argument("bibfile", help="Path to the BibTeX file.")
+    parser.add_argument(
+        "-o",
+        "--output",
+        default="html_output.html",
+        help="Path to write the HTML output (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--highlight-name",
+        default=DEFAULT_HIGHLIGHT_NAME,
+        help="Author name to underline in the output.",
+    )
+    parser.add_argument(
+        "--section",
+        choices=["conference", "journal", "all"],
+        default="conference",
+        help="Which publication category to export.",
+    )
+    return parser
 
-    if not os.path.exists(argv[1]):
-        sys.stderr.write("Error: File %r was not found" % (argv[1],))
-        return 1
 
-    with open(argv[1]) as bibtex_file:
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if not os.path.exists(args.bibfile):
+        parser.error(f"BibTeX file {args.bibfile!r} was not found")
+
+    with open(args.bibfile, encoding="utf-8") as bibtex_file:
         bibtex_database = bibtexparser.load(bibtex_file)
 
-    publications = PublicationFormatter(bibtex_database.entries)
-    export_html_file = open('html_output.html', 'w')
-    publications.export_conference(export_html_file)
+    formatter = PublicationFormatter(
+        bibtex_database.entries, highlight_name=args.highlight_name
+    )
+
+    with open(args.output, "w", encoding="utf-8") as export_html_file:
+        if args.section in ("conference", "all"):
+            formatter.export_conference(export_html_file)
+        if args.section in ("journal", "all"):
+            formatter.export_journal(export_html_file)
+
+    return 0
 
 
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+if __name__ == "__main__":
+    sys.exit(main())
