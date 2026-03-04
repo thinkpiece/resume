@@ -14,6 +14,12 @@ make pdf            # builds all top-level .tex files with lualatex
 make ENGINE=xelatex # switch engine if needed
 ```
 
+## Korean text
+Use `\ko{...}` for Korean strings so they render with a Hangul-capable font.
+```tex
+\item 발표: \ko{산업전망컨퍼런스}
+```
+
 ## Format publications from BibTeX
 The helper prints an HTML `<li>` list you can embed in the resume site.
 ```
