@@ -12,7 +12,7 @@ all: pdf
 pdf: $(PDFS)
 	@echo "Successfully generated .pdf files from the corresponding .tex files."
 
-%.pdf: %.tex resume.cls
+%.pdf: %.tex resume.cls resume-ko.cls
 	@$(ENGINE) $(ENGINE_FLAGS) $<
 
 clean:
