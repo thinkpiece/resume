@@ -36,21 +36,38 @@ def _num(x: float) -> str:
 # --------------------------------------------------------------------------
 # Inline Markdown
 
-def inline_html(text: str, highlight: str | None = None) -> str:
-    """Inline Markdown (spec §4.3) → escaped HTML phrasing content."""
-    return "".join(_node(n) for n in parse_inline(text, highlight))
+def inline_html(text: str, highlight: str | None = None, italic: bool = False) -> str:
+    """Inline Markdown (spec §4.3) → escaped HTML phrasing content.
+
+    `italic` is the style of the line the text sits on (an entry subtitle is
+    italic); see nodes_html().
+    """
+    return nodes_html(parse_inline(text, highlight), italic)
 
 
-def _node(node: Node) -> str:
+def nodes_html(nodes: tuple[Node, ...], italic: bool = False) -> str:
+    """Inline nodes → escaped HTML, on a line that is `italic` or upright.
+
+    Emphasis flips the current style, as Typst's emph does (clarification 7):
+    an <em> in upright text is italic, and one in italic text gets class
+    "upright". Every <em> thus states its own style, so any depth of nesting
+    follows (italic of the line) XOR (odd number of Emph ancestors). Strong
+    does not toggle: bold inside bold stays bold.
+    """
+    return "".join(_node(n, italic) for n in nodes)
+
+
+def _node(node: Node, italic: bool) -> str:
     if isinstance(node, Text):
         return _esc(node.text)
     if isinstance(node, Highlight):
         return f'<strong class="hl"><u>{_esc(node.text)}</u></strong>'
-    inner = "".join(_node(n) for n in node.children)
+    if isinstance(node, Emph):
+        cls = ' class="upright"' if italic else ""
+        return f"<em{cls}>{nodes_html(node.children, not italic)}</em>"
+    inner = nodes_html(node.children, italic)
     if isinstance(node, Strong):
         return f"<strong>{inner}</strong>"
-    if isinstance(node, Emph):
-        return f"<em>{inner}</em>"
     return f'<a href="{_esc(node.url)}">{inner}</a>'     # Link
 
 
@@ -135,6 +152,7 @@ def _css(meta: Meta) -> str:
         ("ul", ["list-style: none"]),
         ("strong", ["font-weight: bold"]),
         ("em", ["font-style: italic"]),
+        ("em.upright", ["font-style: normal"]),     # emphasis inside italic text
         ("a", ["color: inherit", "text-decoration: none"]),
         (".hl u", ["text-decoration: underline", "text-underline-offset: 0.18em",
                    "text-decoration-thickness: 0.045em"]),
@@ -165,7 +183,7 @@ def _css(meta: Meta) -> str:
         (".row > h3, .row > .subtitle, .row > .text", ["flex: 1 1 0", "min-width: 0"]),
         (".aside", ["flex: 0 1 auto", "margin-left: auto", "text-align: right",
                     f"color: {gray}"]),
-        # Entry: bold title and date; optional italic subtitle and side text.
+        # Entry: bold title and date; optional italic subtitle with upright side text.
         (".entry", [f"margin-top: {gap(0.85)}"]),
         (".entry-head", ["break-inside: avoid", "break-after: avoid"]),
         # A bold 11pt title sits about 0.125rem higher in its CSS line box than
@@ -174,7 +192,6 @@ def _css(meta: Meta) -> str:
                                             "margin-bottom: -0.125rem"]),
         ("h3", [f"font-size: {pt(LOOK.entry_pt)}", "font-weight: bold", "line-height: 1.2"]),
         (".subtitle", ["font-style: italic"]),
-        (".subtitle em", ["font-style: normal"]),
         # Bullet item: centered marker column; detail lines slightly smaller.
         (".item", ["display: grid", "grid-template-columns: 1rem minmax(0, 1fr)",
                    f"margin-top: {item_gap}", "break-inside: avoid"]),
@@ -290,7 +307,7 @@ def _entry(entry: Entry, hl: str | None, out: _Lines) -> None:
     out.add(_row(f"<h3>{inline_html(entry.title, hl)}</h3>", entry.date, hl))
     if entry.subtitle is not None or entry.side is not None:
         sub = ("" if entry.subtitle is None
-               else f'<p class="subtitle">{inline_html(entry.subtitle, hl)}</p>')
+               else f'<p class="subtitle">{inline_html(entry.subtitle, hl, italic=True)}</p>')
         out.add(_row(sub, entry.side, hl))
     out.close("</div>")
     _items(entry.items, hl, out)

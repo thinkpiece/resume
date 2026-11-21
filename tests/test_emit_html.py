@@ -20,12 +20,12 @@ FIXTURE = REPO / "tests" / "fixtures" / "cli" / "resume.md"
 
 sys.path.insert(0, str(REPO / "scripts"))
 
-from resumegen.emit_html import emit_html  # noqa: E402
+from resumegen.emit_html import emit_html, nodes_html  # noqa: E402
 from resumegen.model import Document, Entry, Item, Line, Meta, Paragraph, Section  # noqa: E402
 from resumegen.parse import parse  # noqa: E402
-from resumegen.render import (LOOK, PAGE_MARGINS_IN, Highlight, Link, Node,  # noqa: E402
-                              contact_url, header_name, paper_size_mm, parse_inline,
-                              plain_text)
+from resumegen.render import (LOOK, PAGE_MARGINS_IN, Emph, Highlight, Link, Node,  # noqa: E402
+                              Strong, Text, contact_url, header_name, paper_size_mm,
+                              parse_inline, plain_text)
 from resumegen.source import load_lines  # noqa: E402
 from resumegen.variants import filter_variant  # noqa: E402
 
@@ -778,6 +778,176 @@ class FormatTest(unittest.TestCase):
         emit_html(doc)
         self.assertEqual(repr(doc), before)
 
+
+# --------------------------------------------------------------------------
+# Emphasis flips italic, as Typst's emph does (clarification 7)
+
+# The only rules that set font-style, and what each sets. italic_of() below
+# reads the cascade from them, so test_font_style_rules keeps it honest.
+FONT_STYLE_RULES = {"em": "italic", "em.upright": "normal", ".subtitle": "italic"}
+
+# Emphasis nested three deep, with bold in between: w4 sits in three Emph.
+NESTED = "*w1 _w2 **w3 *w4* w5** w6_ w7*"
+NESTED_DEPTH = {"w1": 1, "w2": 2, "w3": 2, "w4": 3, "w5": 2, "w6": 2, "w7": 1}
+
+
+def fragment(source: str) -> El:
+    """The single top-level element of an HTML fragment."""
+    builder = _TreeBuilder()
+    builder.feed(source)
+    builder.close()
+    tops = builder.root.child_elements()
+    if len(tops) != 1 or builder.stack != [builder.root]:
+        raise AssertionError(f"not one closed element: {source!r}")
+    return tops[0]
+
+
+def italic_of(el: El) -> bool:
+    """Whether text directly inside `el` is italic under FONT_STYLE_RULES."""
+    for e in [el, *el.ancestors()]:
+        if e.tag == "em":
+            return "upright" not in e.classes
+        if "subtitle" in e.classes:
+            return True
+    return False
+
+
+def italic_runs(el: El) -> dict[str, bool]:
+    """Each non-blank text run under `el` (stripped) → whether it renders italic."""
+    out = {}
+    for e in el.iter():
+        for c in e.children:
+            if isinstance(c, str) and c.strip():
+                out[c.strip()] = italic_of(e)
+    return out
+
+
+def expected_italic(nodes, base: bool) -> dict[str, bool]:
+    """The XOR rule on the parse tree: base italic, flipped by each Emph."""
+    out = {}
+
+    def walk(ns, italic):
+        for n in ns:
+            if isinstance(n, (Text, Highlight)):
+                if n.text.strip():
+                    out[n.text.strip()] = italic
+            else:
+                walk(n.children, not italic if isinstance(n, Emph) else italic)
+
+    walk(nodes, base)
+    return out
+
+
+class EmphasisToggleTest(unittest.TestCase):
+    def test_font_style_rules(self):
+        css = Page(emit_html(load("fixture", "full"))).css
+        found = {}
+        for media, selectors, decls in css_rules(css):
+            m = re.search(r"font-style:\s*([a-z]+)", decls)
+            if m:
+                for sel in selectors:
+                    found[sel] = m.group(1)
+        self.assertEqual(found, FONT_STYLE_RULES)
+        self.assertNotIn("font: italic", css)
+        self.assertIn("font-weight: bold", css_rule(css, "strong"))   # not "bolder"
+
+    def test_nested_input_is_three_deep(self):
+        depth = {}
+
+        def walk(ns, d):
+            for n in ns:
+                if isinstance(n, Text):
+                    depth[n.text.strip()] = d
+                else:
+                    walk(n.children, d + isinstance(n, Emph))
+
+        walk(parse_inline(NESTED), 0)
+        self.assertEqual(depth, NESTED_DEPTH)
+
+    def test_every_field_follows_the_xor_rule(self):
+        doc = make_doc([make_section(NESTED, [
+            make_entry(NESTED, date=NESTED, subtitle=NESTED, side=NESTED, items=[
+                make_item(NESTED, date=NESTED, details=[NESTED])]),
+        ]), make_section("P", [Paragraph(NESTED, BOTH, LINE)])])
+        page = Page(emit_html(doc))
+        head = page.body.find(cls="entry-head")
+        title_row, sub_row = head.find_all(cls="row")
+        item = page.body.find("li", "item")
+        fields = {
+            "section title": (page.body.find("h2"), False),
+            "entry title": (title_row.find("h3"), False),
+            "entry date": (title_row.find(cls="aside"), False),
+            "subtitle": (sub_row.find(cls="subtitle"), True),
+            "side": (sub_row.find(cls="aside"), False),
+            "item text": (item.find(cls="text"), False),
+            "item date": (item.find(cls="aside"), False),
+            "detail": (item.find("p", "detail"), False),
+            "paragraph": (page.body.find("p", "paragraph"), False),
+        }
+        for name, (el, base) in fields.items():
+            with self.subTest(field=name):
+                want = {w: base != (d % 2 == 1) for w, d in NESTED_DEPTH.items()}
+                self.assertEqual(want, expected_italic(parse_inline(NESTED), base))
+                self.assertEqual(italic_runs(el), want)
+
+    def test_clarification_examples(self):
+        cases = [
+            # (text, subtitle?) → runs and whether each is italic
+            ("*a _b_ c*", False, {"a": True, "b": False, "c": True}),
+            ("*e **f _g_** h*", False, {"e": True, "f": True, "g": False, "h": True}),
+            ("plain *x*", True, {"plain": True, "x": False}),
+            ("*x _y_ z*", True, {"x": False, "y": True, "z": False}),
+        ]
+        for text, in_subtitle, want in cases:
+            with self.subTest(text=text, subtitle=in_subtitle):
+                if in_subtitle:
+                    doc = make_doc([make_section("S", [make_entry("E", subtitle=text,
+                                                                  side="Seoul")])])
+                    el = Page(emit_html(doc)).body.find(cls="subtitle")
+                else:
+                    doc = make_doc([make_section("S", [Paragraph(text, BOTH, LINE)])])
+                    el = Page(emit_html(doc)).body.find("p", "paragraph")
+                self.assertEqual(italic_runs(el), want)
+        # g stays bold: it sits inside the <strong>.
+        page = Page(emit_html(make_doc([make_section("S", [
+            Paragraph("*e **f _g_** h*", BOTH, LINE)])])))
+        g = [e for e in page.body.find("p", "paragraph").iter() if e.text() == "g"][-1]
+        self.assertTrue(any(a.tag == "strong" for a in g.ancestors()))
+
+    def test_side_text_stays_upright(self):
+        doc = make_doc([make_section("S", [make_entry("E", subtitle="Founder", side="Seoul")])])
+        page = Page(emit_html(doc))
+        sub_row = page.body.find(cls="entry-head").find_all(cls="row")[1]
+        self.assertEqual(italic_runs(sub_row), {"Founder": True, "Seoul": False})
+
+    def test_highlight_and_links_keep_the_style(self):
+        doc = make_doc([make_section("S", [make_entry(
+            "E", subtitle="by Test, [site](https://t.est) *Test*")])], highlight="Test")
+        sub = Page(emit_html(doc)).body.find(cls="subtitle")
+        self.assertEqual(italic_runs(sub), {"by": True, ",": True, "site": True,
+                                            "Test": False})
+        runs = [(e.tag, italic_of(e)) for e in sub.iter() if e.tag == "u"]
+        self.assertEqual(runs, [("u", True), ("u", False)])
+
+    def test_any_depth(self):
+        for depth in range(1, 8):
+            # n<k> sits in k Emph, each with a Strong between it and the next;
+            # z sits innermost, in `depth` Emph.
+            node: Node = Text("z")
+            for k in range(depth, 0, -1):
+                node = Emph((Text(f"n{k}"), Strong((node,))))
+            for base in (False, True):
+                with self.subTest(depth=depth, base=base):
+                    want = {f"n{k}": base != (k % 2 == 1) for k in range(1, depth + 1)}
+                    want["z"] = base != (depth % 2 == 1)
+                    self.assertEqual(expected_italic((node,), base), want)
+                    p = fragment(f'<p class="{"subtitle" if base else "plain"}">'
+                                 + nodes_html((node,), italic=base) + "</p>")
+                    self.assertEqual(italic_runs(p), want)
+                    ems = p.find_all("em")
+                    self.assertEqual(len(ems), depth)
+                    for k, em in enumerate(ems, start=1):   # outermost first
+                        self.assertEqual("upright" in em.classes, base != (k % 2 == 0))
 
 # --------------------------------------------------------------------------
 # CLI
