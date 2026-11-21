@@ -333,7 +333,7 @@ def test_special_characters_stay_in_strings(self):
 
 def test_bold_italic_link(self):
     self.assertEqual(inline_to_typst("**B** and *i* [t](http://x.y)"),
-                     '[#strong[#"B"]#" and "#emph[#"i"]#link("http://x.y")[#"t"]]')
+                     '[#strong[#"B"]#" and "#emph[#"i"]#" "#link("http://x.y")[#"t"]]')
 
 def test_underscores_literal_inside_words_and_urls(self):   # Review Focus 3
     self.assertEqual(inline_to_typst("snake_case_name"), '[#"snake_case_name"]')
