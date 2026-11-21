@@ -12,3 +12,10 @@ texput.log
 
 # Generated exports
 html_output.html
+
+# Generated resume output (.typ and .pdf)
+build/
+
+# Python bytecode
+__pycache__/
+*.pyc
