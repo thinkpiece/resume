@@ -257,6 +257,20 @@ class CliNoTypstTest(CliTestBase):
                 self.assertEqual(r.returncode, 1, r.stderr)
                 self.assertFalse(out.is_symlink())
 
+    def test_write_keeps_neighbours_and_normal_mode(self):
+        src = self.write_src("## S\n- x\n")
+        out = self.root / "x.html"
+        neighbour = self.root / ".x.html.tmp"
+        neighbour.write_text("keep", encoding="utf-8")
+        with mock.patch.object(build_resume, "emit_html", return_value="<html>"):
+            code = build_resume.main([str(src), "--variant", "full", "-o", str(out)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.read_text(encoding="utf-8"), "<html>")
+        self.assertEqual(neighbour.read_text(encoding="utf-8"), "keep")
+        self.assertEqual(sorted(p.name for p in self.root.iterdir() if p.name.startswith(".x")),
+                         [".x.html.tmp"])
+        self.assertEqual(out.stat().st_mode & 0o777, 0o666 & ~build_resume._umask())
+
     def test_failed_write_leaves_no_output(self):
         src = self.write_src("## S\n- x\n")
         outdir = self.root / "ro"

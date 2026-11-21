@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -187,18 +188,29 @@ def main(argv: list[str] | None = None) -> int:
 def _write_document(doc, fmt: str, out: Path) -> int:
     """Write the HTML or DOCX file for `doc` at `out`."""
     data = emit_html(doc).encode("utf-8") if fmt == "html" else emit_docx(doc)
-    # Write a sibling file and rename it, so an interrupted write never leaves
-    # part of a file at the output path.
-    tmp = out.with_name(f".{out.name}.tmp")
+    # Write a uniquely named sibling file and rename it, so an interrupted
+    # write never leaves part of a file at the output path.
+    tmp: Path | None = None
     try:
         out.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_bytes(data)
+        fd, name = tempfile.mkstemp(dir=out.parent, prefix=f".{out.name}.", suffix=".tmp")
+        tmp = Path(name)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        tmp.chmod(0o666 & ~_umask())   # mkstemp makes 0600; give the usual mode
         os.replace(tmp, out)
     except OSError as e:
-        _remove(tmp)
+        if tmp is not None:
+            _remove(tmp)
         print(f"error: could not write {out}: {e.strerror or e}", file=sys.stderr)
         return 1
     return 0
+
+
+def _umask() -> int:
+    mask = os.umask(0)
+    os.umask(mask)
+    return mask
 
 
 if __name__ == "__main__":
