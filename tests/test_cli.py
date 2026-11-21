@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import re
 import shutil
@@ -6,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "scripts" / "build_resume.py"
@@ -253,6 +256,29 @@ class CliNoTypstTest(CliTestBase):
                                  "-o", out, path="/nonexistent")
                 self.assertEqual(r.returncode, 1, r.stderr)
                 self.assertFalse(out.is_symlink())
+
+    def test_failed_write_leaves_no_output(self):
+        src = self.write_src("## S\n- x\n")
+        outdir = self.root / "ro"
+        outdir.mkdir()
+        outdir.chmod(0o500)
+        try:
+            self._check_failed_writes(src, outdir)
+        finally:
+            outdir.chmod(0o700)
+
+    def _check_failed_writes(self, src, outdir):
+        for name in ("x.html", "x.docx"):
+            with self.subTest(name=name), \
+                    mock.patch.object(build_resume, "emit_html", return_value="<html>"), \
+                    mock.patch.object(build_resume, "emit_docx", return_value=b"PK"):
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err):
+                    code = build_resume.main([str(src), "--variant", "full",
+                                              "-o", str(outdir / name)])
+                self.assertEqual(code, 1)
+                self.assertIn(f"error: could not write {outdir / name}", err.getvalue())
+                self.assertEqual(list(outdir.iterdir()), [])
 
     def test_parse_error_format(self):
         src = self.write_src("## S\n- x {.ful}\n")

@@ -187,8 +187,17 @@ def main(argv: list[str] | None = None) -> int:
 def _write_document(doc, fmt: str, out: Path) -> int:
     """Write the HTML or DOCX file for `doc` at `out`."""
     data = emit_html(doc).encode("utf-8") if fmt == "html" else emit_docx(doc)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(data)
+    # Write a sibling file and rename it, so an interrupted write never leaves
+    # part of a file at the output path.
+    tmp = out.with_name(f".{out.name}.tmp")
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_bytes(data)
+        os.replace(tmp, out)
+    except OSError as e:
+        _remove(tmp)
+        print(f"error: could not write {out}: {e.strerror or e}", file=sys.stderr)
+        return 1
     return 0
 
 
