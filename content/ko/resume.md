@@ -14,7 +14,7 @@ homepage: http://www.junyoungpark.com
 ## 핵심 요약
 
 - KAIST 전기및전자공학 박사 출신 AI 반도체(SoC) 전문가, 창업 후 10년간 기업 경영 (2015 – 현재)
-- 저전력 AI·비전 SoC 설계 전문: 국제 저널·학회 논문 37편, 등록 특허 20건, ISSCC 발표 및 시연
+- 저전력 AI·비전 SoC 설계 전문: 국제 저널·학회 논문 35편, 등록 특허 18건, ISSCC 발표 및 시연
 - 연구개발과 사업화를 잇는 실행력: 산·학·연 R&D 프로젝트 20건 이상 주도, 초청강연 20여 회
 
 ## 경력
@@ -69,7 +69,7 @@ homepage: http://www.junyoungpark.com
 ### 국제 저널 논문
 @../shared/journals.md {.full}
 
-### 국제 학회 논문 (주저자)
+### 국제 학회 논문 (주저자 논문만 수록, 총 25편)
 @../shared/conferences.md {.full}
 
 ### 특허
@@ -78,5 +78,5 @@ homepage: http://www.junyoungpark.com
 ## 연구 실적 요약 {.short}
 
 ### 논문 및 특허
-- 국제 저널 논문 10편 (IEEE JSSC 등), 국제 학회 논문 27편 (ISSCC, CICC, A-SSCC 등)
-- 국내외 등록 특허 20건 (AI·영상처리·반도체 테스트 분야)
+- 국제 저널 논문 10편 (IEEE JSSC 등), 국제 학회 논문 25편 (ISSCC, CICC, A-SSCC 등)
+- 국내외 등록 특허 18건 (AI·영상처리·반도체 테스트 분야)
