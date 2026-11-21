@@ -319,10 +319,30 @@ class CliNoTypstTest(CliTestBase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertRegex(r.stderr, rf"warning: {re.escape(str(src))}:5: .*can never appear")
 
-    def test_output_must_be_pdf(self):
-        r = self.run_cli(self.write_src("## S\n"), "--variant", "full", "-o", "x.png")
-        self.assertEqual(r.returncode, 2)
-        self.assertIn(".pdf", r.stderr)
+    def test_output_extension_picks_format(self):
+        self.assertEqual(build_resume.output_format(Path("a/b.pdf")), "pdf")
+        self.assertEqual(build_resume.output_format(Path("b.HTML")), "html")
+        self.assertEqual(build_resume.output_format(Path("b.Docx")), "docx")
+        for name in ("b.htm", "b.doc", "b", "b.pdf.txt"):
+            with self.subTest(name=name):
+                self.assertIsNone(build_resume.output_format(Path(name)))
+
+    def test_unknown_output_extension_names_the_three(self):
+        for name in ("x.png", "x.htm", "x"):
+            with self.subTest(name=name):
+                r = self.run_cli(self.write_src("## S\n"), "--variant", "full", "-o", name)
+                self.assertEqual(r.returncode, 2)
+                self.assertIn(".pdf, .html or .docx", r.stderr)
+                self.assertFalse((self.root / name).exists())
+
+    def test_typ_only_needs_pdf_output(self):
+        for name in ("x.html", "x.docx"):
+            with self.subTest(name=name):
+                r = self.run_cli(self.write_src("## S\n"), "--variant", "full", "-o", name,
+                                 "--typ-only")
+                self.assertEqual(r.returncode, 2)
+                self.assertIn("--typ-only", r.stderr)
+                self.assertFalse((self.root / "build").exists())
 
     def test_count_pdf_pages_fallback(self):
         pdf = self.root / "x.pdf"

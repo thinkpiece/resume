@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Build one resume PDF from a Markdown source.
+"""Build one resume as PDF, HTML or DOCX from a Markdown source.
 
     python3 scripts/build_resume.py content/en/resume.md --variant full \
         -o build/Resume_JunyoungPark_en_full.pdf
 
+The extension of -o picks the format: .pdf, .html or .docx.
+
 Pipeline: read Markdown (with @includes) -> parse -> keep one variant ->
-write <root>/build/<OUT stem>.typ -> typst compile -> check the page count.
+  PDF:        write <root>/build/<OUT stem>.typ -> typst compile -> check the page count
+  HTML, DOCX: write OUT directly (no Typst needed)
 The repo root (Typst --root) is this script's parent folder, or RESUME_ROOT.
 Python standard library only.
 """
@@ -25,6 +28,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from resumegen import ResumeError  # noqa: E402
 from resumegen.emit import emit_typst  # noqa: E402
+from resumegen.emit_docx import emit_docx  # noqa: E402
+from resumegen.emit_html import emit_html  # noqa: E402
 from resumegen.model import VARIANTS  # noqa: E402
 from resumegen.parse import parse  # noqa: E402
 from resumegen.source import load_lines  # noqa: E402
@@ -35,6 +40,14 @@ from resumegen.variants import filter_variant  # noqa: E402
 FONT_DIR_GLOB = "/System/Library/AssetsV2/com_apple_MobileAsset_Font*"
 
 _UNKNOWN_FONT_RE = re.compile(r"unknown font family: ([^\n]+)")
+
+# Output format by the extension of -o (compared case-insensitively).
+FORMATS = {".pdf": "pdf", ".html": "html", ".docx": "docx"}
+
+
+def output_format(path: Path) -> str | None:
+    """"pdf", "html" or "docx" for an output path; None for any other extension."""
+    return FORMATS.get(path.suffix.lower())
 
 
 def repo_root() -> Path:
@@ -86,17 +99,24 @@ def _remove(path: Path) -> None:
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(
         prog="build_resume.py",
-        description="Build a resume PDF from Markdown through Typst.")
+        description="Build a resume as PDF (through Typst), HTML or DOCX from Markdown.")
     ap.add_argument("src", help="root Markdown file, e.g. content/en/resume.md")
     ap.add_argument("--variant", required=True, choices=sorted(VARIANTS),
                     help="which variant to build")
     ap.add_argument("-o", "--output", type=Path,
-                    help="output PDF (default: <root>/build/<src stem>_<variant>.pdf)")
+                    help="output file; its extension picks the format: .pdf, .html or "
+                         ".docx (default: <root>/build/<src stem>_<variant>.pdf)")
     ap.add_argument("--typ-only", action="store_true",
-                    help="write the .typ file only; do not run Typst")
+                    help="PDF only: write the .typ file; do not run Typst")
     args = ap.parse_args(argv)
-    if args.output is not None and args.output.suffix.lower() != ".pdf":
-        ap.error(f"output must end in .pdf: {args.output}")
+    if args.output is None:
+        args.format = "pdf"
+    else:
+        args.format = output_format(args.output)
+        if args.format is None:
+            ap.error(f"output must end in .pdf, .html or .docx: {args.output}")
+    if args.typ_only and args.format != "pdf":
+        ap.error(f"--typ-only works only with PDF output: {args.output}")
     return args
 
 
@@ -106,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
     out = args.output or root / "build" / f"{Path(args.src).stem}_{args.variant}.pdf"
     # Typst only reads sources under --root, so the .typ always goes there.
     typ = root / "build" / f"{out.stem}.typ"
-    # Remove the old PDF first, so a failed build never leaves one behind.
+    # Remove the old output first, so a failed build never leaves one behind.
     # --typ-only produces no PDF, so it leaves the output path alone.
     if not args.typ_only:
         _remove(out)
@@ -118,6 +138,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     for w in doc.warnings:
         print(f"warning: {w}", file=sys.stderr)
+
+    if args.format != "pdf":
+        return _write_document(doc, args.format, out)
 
     typ.parent.mkdir(parents=True, exist_ok=True)
     typ.write_text(emit_typst(doc), encoding="utf-8")
@@ -158,6 +181,14 @@ def main(argv: list[str] | None = None) -> int:
         pages = count_pdf_pages(out)
         if pages > 1:
             print(f"warning: short variant has {pages} pages: {out}", file=sys.stderr)
+    return 0
+
+
+def _write_document(doc, fmt: str, out: Path) -> int:
+    """Write the HTML or DOCX file for `doc` at `out`."""
+    data = emit_html(doc).encode("utf-8") if fmt == "html" else emit_docx(doc)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(data)
     return 0
 
 
