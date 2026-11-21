@@ -293,7 +293,11 @@ PAPER_SIZES_MM: dict[str, tuple[float, float]] = {
     "iso-c6": (114.0, 162.0), "iso-c7": (81.0, 114.0), "iso-c8": (57.0, 81.0),
     "us-letter": (215.9, 279.4), "us-legal": (215.9, 355.6),
     "us-tabloid": (279.4, 431.8), "us-ledger": (431.8, 279.4),
-    "us-executive": (184.15, 266.7),
+    "us-executive": (184.15, 266.7), "us-foolscap-folio": (215.9, 342.9),
+    "us-statement": (139.7, 215.9), "us-oficio": (215.9, 340.36),
+    "us-gov-letter": (203.2, 266.7), "us-gov-legal": (215.9, 330.2),
+    "us-business-card": (88.9, 50.8), "us-digest": (139.7, 215.9),
+    "us-trade": (152.4, 228.6),
     # Typst rounds the ANSI sizes to whole millimetres.
     "ansi-a": (216.0, 279.0), "ansi-b": (279.0, 432.0), "ansi-c": (432.0, 559.0),
     "ansi-d": (559.0, 864.0), "ansi-e": (864.0, 1118.0),

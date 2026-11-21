@@ -75,9 +75,10 @@ Differences from the PDF:
   installed, or it substitutes others (HTML falls back to a generic serif or
   sans-serif family). Page breaks and the page count can differ from the PDF,
   and only the PDF warns about a short variant longer than one page.
-- The page size follows `paper` for the ISO A, B and C sizes (`a4`, `iso-b5`, …)
-  and the US and ANSI sizes (`us-letter`, `us-legal`, `ansi-b`, …); any other
-  Typst paper name gives an A4 page in HTML and DOCX.
+- The page size follows `paper` for the ISO A, B and C sizes (`a0`–`a11`,
+  `iso-b1`–`iso-b8`, `iso-c3`–`iso-c8`) and every `us-…` and `ansi-…` size
+  (`us-letter`, `us-statement`, `ansi-b`, …); any other Typst paper name
+  (`jis-b5`, `arch-a`, …) gives an A4 page in HTML and DOCX.
 
 ## Folder layout
 

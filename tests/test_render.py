@@ -1,3 +1,4 @@
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -81,6 +82,15 @@ class HeaderAndPageTest(unittest.TestCase):
         from resumegen.parse import TYPST_PAPERS
         from resumegen.render import PAPER_SIZES_MM
         self.assertLessEqual(set(PAPER_SIZES_MM), TYPST_PAPERS)
+
+    def test_paper_table_covers_the_series_the_readme_names(self):
+        # README: the ISO A, B and C sizes and the US and ANSI sizes are known.
+        from resumegen.parse import TYPST_PAPERS
+        from resumegen.render import PAPER_SIZES_MM
+        series = re.compile(r"(a\d+|iso-[bc]\d+|us-.+|ansi-.+)")
+        expected = {p for p in TYPST_PAPERS if series.fullmatch(p)}
+        self.assertEqual(expected - set(PAPER_SIZES_MM), set())
+        self.assertEqual(paper_size_mm("us-statement"), (139.7, 215.9))
 
     def test_look_matches_template(self):
         typ = (Path(__file__).resolve().parents[1] / "template" / "resume.typ").read_text(
