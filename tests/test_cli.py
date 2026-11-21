@@ -244,6 +244,16 @@ class CliNoTypstTest(CliTestBase):
                 self.assertEqual(r.returncode, 1, r.stderr)
                 self.assertFalse(out.exists(), r.stderr)
 
+    def test_failed_run_removes_dangling_output_symlink(self):
+        for name in ("link.pdf", "link.html", "link.docx"):
+            with self.subTest(name=name):
+                out = self.root / name
+                out.symlink_to(self.root / "nowhere" / name)
+                r = self.run_cli(self.write_src("## S\n- x {.ful}\n"), "--variant", "full",
+                                 "-o", out, path="/nonexistent")
+                self.assertEqual(r.returncode, 1, r.stderr)
+                self.assertFalse(out.is_symlink())
+
     def test_parse_error_format(self):
         src = self.write_src("## S\n- x {.ful}\n")
         r = self.run_cli(src, "--variant", "full")

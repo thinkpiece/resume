@@ -92,8 +92,8 @@ def count_pdf_pages(pdf: Path, use_pdfinfo: bool = True) -> int:
 
 
 def _remove(path: Path) -> None:
-    if path.exists():
-        path.unlink()
+    # unlink, not exists(): a dangling symlink at the output path goes too.
+    path.unlink(missing_ok=True)
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
