@@ -49,9 +49,11 @@ python3 scripts/build_resume.py content/en/resume.md --variant full --typ-only  
 
 The build fails with `<file>:<line>: <message>` on any malformed line and on a
 `paper` name Typst does not know; for the PDF also on a `font` that Typst
-cannot find. The last two point at their front-matter line. A failed build
-leaves no file at the output path. A short PDF longer than one page still
-builds, with a warning that gives the page count.
+cannot find. The last two point at their front-matter line. A build that
+fails after it starts reading the source leaves no file at the output path; a
+bad command line (exit status 2) changes nothing, and `--typ-only` leaves the
+PDF alone. A short PDF longer than one page still builds, with a warning that
+gives the page count.
 
 ### HTML and DOCX
 
@@ -128,8 +130,8 @@ github: https://github.com/example
 
 `name` is required. Defaults: `lang: en`, `paper: us-letter`, `font: Charter`.
 The contact keys (`location`, `phone`, `email`, `homepage`, `linkedin`,
-`github`) print with an icon in the order written; email, phone and URLs
-become links. Any other key is an error.
+`github`) print in the order written, with an icon in the PDF; email, phone
+and URLs become links. Any other key is an error.
 
 ### Body
 
