@@ -161,6 +161,33 @@ class DocxTest(unittest.TestCase):
                          ("ISSCC", "https://isscc.org/a_b")])
         self.assertEqual(actual, expected)
 
+    def test_emphasis_toggles_italic_relative_to_the_paragraph_style(self):
+        doc = parse(load_lines(FIXTURE))
+        doc.sections[0].children[0].text = (
+            "Body plain *Body italic _Body upright_ **_Body bold upright_** after*."
+        )
+        entry = doc.sections[1].children[0]
+        entry.subtitle = "Subtitle base *Subtitle upright _Subtitle italic_*"
+        entry.side = "Side upright"
+        parts = _parts(emit_docx(doc))
+        styles = parts["word/styles.xml"]
+        subtitle_style = styles.find('w:style[@w:styleId="ResumeSubtitle"]', NS)
+        document = parts["word/document.xml"]
+        runs = {_text(run).strip(): run for run in document.iter(W + "r")}
+        for tag in ("i", "iCs"):
+            self.assertIsNotNone(subtitle_style.find(f"w:rPr/w:{tag}", NS))
+            for label in ("Body plain", "Body upright", "Body bold upright",
+                          "Subtitle base", "Subtitle italic"):
+                self.assertIsNone(runs[label].find(f"w:rPr/w:{tag}", NS), label)
+            for label in ("Subtitle upright", "Side upright"):
+                prop = runs[label].find(f"w:rPr/w:{tag}", NS)
+                self.assertIsNotNone(prop, label)
+                self.assertEqual(prop.get(W + "val"), "0", label)
+            italic = runs["Body italic"].find(f"w:rPr/w:{tag}", NS)
+            self.assertIsNotNone(italic)
+            self.assertNotEqual(italic.get(W + "val"), "0")
+        self.assertIsNotNone(runs["Body bold upright"].find("w:rPr/w:b", NS))
+
     def test_empty_headings_and_side_without_subtitle(self):
         with tempfile.TemporaryDirectory() as directory:
             src = Path(directory) / "empty.md"
