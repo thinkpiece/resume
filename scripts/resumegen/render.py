@@ -278,14 +278,24 @@ def header_name(meta: Meta) -> str:
 # --------------------------------------------------------------------------
 # Page and look (mirrors template/resume.typ; the PDF never reads these)
 
-# Width and height in millimetres, for the paper names the writers know.
+# Width and height in millimetres of the Typst paper names the HTML and DOCX
+# writers know: the ISO A, B and C series and the US/ANSI sizes. Typst accepts
+# more names (parse.TYPST_PAPERS); those fall back to A4 outside the PDF.
 PAPER_SIZES_MM: dict[str, tuple[float, float]] = {
-    "a3": (297.0, 420.0),
-    "a4": (210.0, 297.0),
-    "a5": (148.0, 210.0),
-    "us-letter": (215.9, 279.4),
-    "us-legal": (215.9, 355.6),
+    "a0": (841.0, 1189.0), "a1": (594.0, 841.0), "a2": (420.0, 594.0),
+    "a3": (297.0, 420.0), "a4": (210.0, 297.0), "a5": (148.0, 210.0),
+    "a6": (105.0, 148.0), "a7": (74.0, 105.0), "a8": (52.0, 74.0),
+    "a9": (37.0, 52.0), "a10": (26.0, 37.0), "a11": (18.0, 26.0),
+    "iso-b1": (707.0, 1000.0), "iso-b2": (500.0, 707.0), "iso-b3": (353.0, 500.0),
+    "iso-b4": (250.0, 353.0), "iso-b5": (176.0, 250.0), "iso-b6": (125.0, 176.0),
+    "iso-b7": (88.0, 125.0), "iso-b8": (62.0, 88.0),
+    "iso-c3": (324.0, 458.0), "iso-c4": (229.0, 324.0), "iso-c5": (162.0, 229.0),
+    "iso-c6": (114.0, 162.0), "iso-c7": (81.0, 114.0), "iso-c8": (57.0, 81.0),
+    "us-letter": (215.9, 279.4), "us-legal": (215.9, 355.6),
+    "us-tabloid": (279.4, 431.8), "us-ledger": (431.8, 279.4),
     "us-executive": (184.15, 266.7),
+    "ansi-a": (215.9, 279.4), "ansi-b": (279.4, 431.8), "ansi-c": (431.8, 558.8),
+    "ansi-d": (558.8, 863.6), "ansi-e": (863.6, 1117.6),
 }
 FALLBACK_PAPER = "a4"
 

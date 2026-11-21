@@ -73,7 +73,14 @@ class HeaderAndPageTest(unittest.TestCase):
     def test_paper_sizes(self):
         self.assertEqual(paper_size_mm("a4"), (210.0, 297.0))
         self.assertEqual(paper_size_mm("us-letter"), (215.9, 279.4))
+        self.assertEqual(paper_size_mm("us-tabloid"), (279.4, 431.8))
+        self.assertEqual(paper_size_mm("iso-b5"), (176.0, 250.0))
         self.assertEqual(paper_size_mm("jis-b5"), (210.0, 297.0))   # not in the table: A4
+
+    def test_paper_table_names_are_typst_papers(self):
+        from resumegen.parse import TYPST_PAPERS
+        from resumegen.render import PAPER_SIZES_MM
+        self.assertLessEqual(set(PAPER_SIZES_MM), TYPST_PAPERS)
 
     def test_look_matches_template(self):
         typ = (Path(__file__).resolve().parents[1] / "template" / "resume.typ").read_text(
