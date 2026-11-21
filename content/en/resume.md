@@ -65,7 +65,6 @@ Research Intern
 - Technical Program Committee, *IEEE Asian Solid-State Circuits Conference*, 2018-Present.
 - Technical Program Committee, *IEEE/ACM Design Automation Conference*, 2025.
 - Expert Evaluation Committee Member, *Korea Integrated R&D Information System*, 2017-Present.
-- Over 20 invited talks on AI semiconductors (KAIST, ETRI, the Korean Semiconductor Industry Association, the Institute of Electronics and Information Engineers, and others). {.short}
 
 ## Publications {.full}
 
