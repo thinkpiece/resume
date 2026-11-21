@@ -66,7 +66,7 @@ name: Junyoung Park
 title: AI System-on-Chip Startup Founder & Director & Engineer
 lang: en                 # en | ko  (sets hyphenation / line breaking)
 paper: us-letter         # Typst paper name: us-letter | a4
-font: Charter, Nanum Myeongjo     # comma-separated fallback list
+font: Charter, NanumMyeongjo     # comma-separated fallback list
 highlight: Junyoung Park # author name to bold+underline everywhere
 location: Seongnam-si 13105, Gyeonggi-do, Republic of Korea
 phone: +82-10-2542-5500
@@ -183,8 +183,8 @@ Base: the current English PDF (`Resume_JunyoungPark.pdf`), refreshed lightly.
 
 Fonts (owner: English must not use Pretendard):
 - English resume: `Charter` (installed with macOS; a more modern classic serif
-  than Times New Roman), Hangul fallback `Nanum Myeongjo` for the Korean patent
-  titles and venue names that appear in the English resume. Nanum Myeongjo is
+  than Times New Roman), Hangul fallback `NanumMyeongjo` for the Korean patent
+  titles and venue names that appear in the English resume. NanumMyeongjo is
   an on-demand macOS font under `/System/Library/AssetsV2/…Font8/`; check with
   `typst fonts` that Typst finds it. If it does not, pass that directory with
   `--font-path`, or fall back to `AppleMyungjo` (what the LaTeX version used).

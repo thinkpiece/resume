@@ -29,7 +29,7 @@ the template; content lives only in `content/`.
 - `build/` is git-ignored; no PDF is committed anywhere (§7, owner decision 1b).
 - Layout: black text, dates may be dark gray; no accent color, no side bars, no colored role lines (§2 anti-goals, §6).
 - Margins 0.6in left/right, 0.5in top/bottom; no page numbers.
-- English resume never uses Pretendard; English fonts `Charter, Nanum Myeongjo`; Korean fonts `Pretendard` (§6).
+- English resume never uses Pretendard; English fonts `Charter, NanumMyeongjo`; Korean fonts `Pretendard` (§6).
 - English in all code, comments, help text, and messages. Resume content keeps its language.
 - Work on branch `md-resume` in `/Users/jy/workspace/resume`. Commit only the files in your task's scope. Never push.
 
@@ -142,7 +142,7 @@ include `scope` ∩ the parent's `variants`. Text fields hold raw inline Markdow
   title: "AI System-on-Chip Startup Founder & Director & Engineer",
   lang: "en",
   paper: "us-letter",
-  fonts: ("Charter", "Nanum Myeongjo"),
+  fonts: ("Charter", "NanumMyeongjo"),
   contacts: (
     (kind: "email", text: "junyoung@uxf.ai", url: "mailto:junyoung@uxf.ai"),
     (kind: "location", text: "Seongnam-si 13105", url: none),
@@ -165,7 +165,7 @@ whitespace between pieces. The project is compiled with `--root` = repo root.
 ### Task 0 (lead): Toolchain
 
 - [ ] `brew install typst` then `typst --version` → `typst 0.15.x`.
-- [ ] `typst fonts | grep -E "^(Charter|Nanum Myeongjo|Pretendard|AppleMyungjo)$"` → record which are found in the team brief. If Nanum Myeongjo is missing, test `typst fonts --font-path "/System/Library/AssetsV2/com_apple_MobileAsset_Font8"`; record the outcome as a clarification (Task 4 then passes `--font-path`, or the English fallback becomes `AppleMyungjo`).
+- [ ] `typst fonts | grep -E "^(Charter|NanumMyeongjo|Pretendard|AppleMyungjo)$"` → record which are found in the team brief. If NanumMyeongjo is missing, test `typst fonts --font-path "/System/Library/AssetsV2/com_apple_MobileAsset_Font8"`; record the outcome as a clarification (Task 4 then passes `--font-path`, or the English fallback becomes `AppleMyungjo`).
 
 ### Task 1: Source loading and includes
 
@@ -231,7 +231,7 @@ Rules (§4.1, §4.2, §5): front matter = lines between a first-line `---` and t
 ```python
 def test_front_matter(self):
     m = doc.meta
-    self.assertEqual(m.fonts, ["Charter", "Nanum Myeongjo"])
+    self.assertEqual(m.fonts, ["Charter", "NanumMyeongjo"])
     self.assertEqual(m.contacts, [("location", "Seongnam-si"), ("email", "a@b.c")])
     self.assertEqual(m.title, "AI & SoC")   # value "AI & SoC  # note"
 
@@ -351,7 +351,7 @@ def test_highlight(self):
 def test_emit_document_shape(self):
     out = emit_typst(doc)
     self.assertTrue(out.startswith('#import "/template/resume.typ": *\n'))
-    self.assertIn('fonts: ("Charter", "Nanum Myeongjo"),', out)
+    self.assertIn('fonts: ("Charter", "NanumMyeongjo"),', out)
     self.assertIn('(kind: "phone", text: "+82-10-2542-5500", url: "tel:+821025425500"),', out)
     self.assertIn('#section([#"Work"])[', out)
     self.assertIn('#entry(title: [#"UX"], date: [#"2015"], subtitle: none, side: none)[', out)
@@ -403,7 +403,7 @@ Sources: `resume_junyoungpark.tex` (English) and `resume_junyoungpark_ko.tex` (K
 
 Structure (§9):
 - `content/shared/journals.md`, `conferences.md`, `talks.md`, `patents.md`: bullets only, in the English file's order. Publication bullets: `- Title, *Venue*, details, date.` then the author line as a continuation. Talk bullets: `- Title, *Venue*, date.` Patent bullets: `- KR102888862 전기차 화재 관리 장치 및 이의 동작 방법`.
-- `content/en/resume.md`: front matter as in §4.1 (fonts `Charter, Nanum Myeongjo`, paper `us-letter`, the five contact fields of the English file). Sections in the English order. Full = all visible English content. Short additions (draft): `## Summary` (both variants) translating the three Korean summary bullets; awards other than the four the Korean short keeps → `{.full}`; Invited Talks, Journal Papers, Conference Papers, Patents → `{.full}` includes under `## Publications {.full}` / `### Invited Talks {.full}`; a `{.short}` activity bullet summarizing invited talks; a `## Research Output {.short}` section translating "연구 실적 요약".
+- `content/en/resume.md`: front matter as in §4.1 (fonts `Charter, NanumMyeongjo`, paper `us-letter`, the five contact fields of the English file). Sections in the English order. Full = all visible English content. Short additions (draft): `## Summary` (both variants) translating the three Korean summary bullets; awards other than the four the Korean short keeps → `{.full}`; Invited Talks, Journal Papers, Conference Papers, Patents → `{.full}` includes under `## Publications {.full}` / `### Invited Talks {.full}`; a `{.short}` activity bullet summarizing invited talks; a `## Research Output {.short}` section translating "연구 실적 요약".
 - `content/ko/resume.md`: front matter with Korean values from the Korean file (fonts `Pretendard`, paper `a4`, four contact fields). Short = all visible Korean content, same wording and order. Full additions, all `{.full}`: the two awards missing from the Korean file, translated (`은종관 장학상 (석사 신입생 수석)`, `국가과학기술 연구장학생`) with their dates; `### 초청 강연` including `../shared/talks.md`; `## 연구 실적` with `### 국제 저널 논문`, `### 국제 학회 논문 (주저자)`, `### 특허` including the shared lists; `## 연구 실적 요약` gets `{.short}`.
 
 - [ ] **Step 1:** Write the shared lists; count bullets: journals 10, conferences 6, talks 22, patents 18.
