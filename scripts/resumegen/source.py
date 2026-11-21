@@ -16,13 +16,9 @@ from .model import VARIANTS, Line
 
 INCLUDE_RE = re.compile(r"^@(\S+\.md)(?:\s+\{\.(full|short)\})?\s*$")
 
-# A line that starts like an include ("@something.md") but is not a valid one.
-_INCLUDE_ATTEMPT_RE = re.compile(r"^@\S+\.md(?:\s|$)")
-
-# A trailing "{...}" that looks like an attempt to write a variant marker,
-# e.g. "{.ful}", "{full}", "{ .full }", "{.Full}".
-MARKER_ATTEMPT_RE = re.compile(r"\{\s*\.?\s*[A-Za-z]+\s*\}$")
-MARKER_RE = re.compile(r"\s\{\.(full|short)\}$")
+# "@path.md{.full}": an include whose marker is glued to the path.
+_GLUED_INCLUDE_RE = re.compile(r"^@\S+\.md\{[^{}]*\}\s*$")
+_TRAILING_BRACES_RE = re.compile(r"\{([^{}]*)\}$")
 
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
@@ -54,16 +50,47 @@ def _load(path: Path, scope: frozenset[str], chain: list[Path], base: Path,
             sub_scope = scope & frozenset({m.group(2)}) if m.group(2) else scope
             out.extend(_load(target, sub_scope, chain, base, include_line=line))
             continue
-        if _INCLUDE_ATTEMPT_RE.match(text):
-            rest = text.rstrip()
-            if MARKER_ATTEMPT_RE.search(rest):
-                bad = MARKER_ATTEMPT_RE.search(rest).group(0)
-                raise at(line, f"invalid variant marker '{bad}'; "
-                               "use {.full} or {.short}")
-            raise at(line, "invalid include line; expected '@path.md' "
-                           "optionally followed by {.full} or {.short}")
+        if text.startswith("@"):
+            stripped = text.rstrip()
+            if _GLUED_INCLUDE_RE.match(stripped):
+                raise at(line, "put a space between the include path and its marker")
+            found = trailing_marker(stripped)
+            if found and found[1] is None:
+                raise at(line, invalid_marker_message(stripped[found[0]:]))
         out.append(line)
     return out
+
+
+def trailing_marker(text: str) -> tuple[int, str | None] | None:
+    """Find a variant marker attempt at the end of `text` (already rstripped).
+
+    Returns None when the text does not end in a marker attempt, else
+    (start index of "{", variant) where variant is "full"/"short" for a valid
+    marker and None for an invalid attempt. A trailing "{...}" is an attempt
+    when its content, with spaces removed, starts with "." or equals
+    full/short in any letter case. An escaped "\\{" never starts one.
+    """
+    m = _TRAILING_BRACES_RE.search(text)
+    if not m or _escaped(text, m.start()):
+        return None
+    inner = "".join(m.group(1).split())
+    if not (inner.startswith(".") or inner.lower() in ("full", "short")):
+        return None
+    if m.group(1) in (".full", ".short"):
+        return m.start(), m.group(1)[1:]
+    return m.start(), None
+
+
+def invalid_marker_message(bad: str) -> str:
+    return f"invalid variant marker '{bad}'; write {{.full}} or {{.short}}"
+
+
+def _escaped(text: str, i: int) -> bool:
+    """True when text[i] is preceded by an odd number of backslashes."""
+    n = 0
+    while i - n - 1 >= 0 and text[i - n - 1] == "\\":
+        n += 1
+    return n % 2 == 1
 
 
 def _read(path: Path, include_line: Line | None) -> list[str]:

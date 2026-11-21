@@ -108,6 +108,11 @@ class SourceTest(unittest.TestCase):
         self.assertIsNone(INCLUDE_RE.match("email me @home"))
         self.assertIsNone(INCLUDE_RE.match("- @a.md"))
 
+    def test_include_like_text_passes_through(self):   # clarification 10
+        root = self.write("root.md", "@notes.md is a file\n@KAIST\n")
+        self.assertEqual([l.text for l in load_lines(root)],
+                         ["@notes.md is a file", "@KAIST"])
+
     def test_bad_include_marker_errors(self):
         root = self.write("root.md", "@a.md {.ful}")
         self.write("a.md", "y")
