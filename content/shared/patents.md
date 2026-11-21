@@ -1,0 +1,18 @@
+- KR102888862 전기차 화재 관리 장치 및 이의 동작 방법
+- KR102791658 반도체 소자를 테스트하기 위한 회로 장치 및 이의 동작 방법
+- KR102780185 세포 분류 모델을 학습시키는 방법 및 장치
+- KR102793124 복수의 영상을 스티칭하는 방법, 장치 및 프로그램
+- KR102736393 이미지 센서 및 이를 포함하는 이미지 처리 장치
+- KR102876678 광학 코드에 기초한 객체 인식 시스템
+- KR102882773 단일 세포 클러스터링 방법 및 장치
+- KR102735092 이미지 분석을 위한 파생 이미지를 생성하기 위한 방법, 시스템 및 비일시성의 컴퓨터 판독 가능한 기록 매체
+- KR102609433 얼굴인식 스마트 보안 스크린 제어 시스템 및 방법
+- KR102717124 밀폐형 스마트팜 운영 장치 및 그 방법
+- KR102584573 복합 센서 정보를 이용하여 영상 화질을 개선하는 통합 영상 처리 장치 및 그 방법
+- KR102619956 ToF 센서를 이용한 자동 개폐 안전 시스템 및 이의 제어방법
+- KR102735564 ASIC 칩 테스트용 소켓 보드
+- KR102548970 US18/077,442 Method and system for generating data set relating to facial expressions, and non-transitory computer-readable recording medium
+- KR101638095 METHOD FOR PROVIDING USER INTERFACE THROUGH HEAD MOUNT DISPLAY BY USING GAZE RECOGNITION AND BIO-SIGNAL, AND DEVICE, AND COMPUTER-READABLE RECORDING MEDIA USING THE SAME
+- KR101907028 Analog Digital Interfaced SRAM Structure
+- KR101841744 Stereo Image Matching System integrated CMOS Image Sensor and Method thereof
+- KR101190000 SUPPORT VECTOR MACHINE PROCESSOR AND MEMORY MANAGEMENT METHOD THEREOF

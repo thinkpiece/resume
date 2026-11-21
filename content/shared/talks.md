@@ -1,0 +1,22 @@
+- AI Semiconductor Strategies: Lessons from Global AI Chip Companies, *Kyung Hee University*, Nov., 2024.
+- Why Know-How-Centric R&D Capabilities Matter: Insights from AI Industry Trends, *Gachon University*, Dec., 2023.
+- AI Semiconductor Strategies: Lessons from Global AI Chip Companies, *ICT Industry Outlook Conference (ICT산업전망컨퍼런스)*, Nov., 2023.
+- Industry-Academia Collaboration for AI Semiconductor R&D and Commercialization, *AI Processing-in-Memory (AI-PIM) Workshop, KAIST*, Spt., 2023.
+- AI Semiconductor Technology and Global Trends, *VICTORY(VC ICT 전문성강화교육), Korea Institute of Digital Convergence*, Jun., 2023.
+- AI Semiconductor R&D Trends and UX Factory’s Strategies, *Kyung Hee University*, Dec., 2022.
+- Strategic Directions for AI Semiconductor as a Startup, *Electronics and Telecommunications Research Institute.*, Dec., 2022.
+- On-sensor AI Semiconductor for AIoT Devices, *The Institute of Electronics and Information Engineers (대한전자공학회)*, Nov., 2022.
+- AI Semiconductor Technology and Business for Edge UX, *National IT Industry Promotion Agency - ICT Innovation Center*, Aug., 2022.
+- AI Semiconductor R&D Trends and Next-gen User Experience with AI Semiconductor, *Ulsan National Institute of Science and Technology*, Nov., 2021.
+- Edge UX : AI Semiconductor Strategy as a Startup, *Korean Semiconductor Industry Association*, Jul., 2020.
+- Edge UX : AI Semiconductor Strategy as a Startup, *Korea Industrial Education Institute*, Dec., 2019.
+- Bringing Deep Learning to the Edge, *Korea Institute of Science and Technology*, Dec., 2019.
+- AI Accelerators for Deep Learning on Embedded Systems, *The Korean Institute of Broadcast and Media Engineers*, Dec., 2019.
+- Technical Directions for the Next-generation AI, *Korea Educational Center of Future Technology*, Mar., 2019.
+- Deep learning SW framework and ASIC for AI SoC, *Electronics and Telecommunications Research Institute.*, Spt., 2018.
+- Embedded Deep Neural Network SoC, *Korea Electronics Technology Institute*, Spt., 2018.
+- Embedded Deep Neural Network SoC, *Electronics and Telecommunications Research Institute*, Mar., 2017.
+- Embedded Deep Neural Network SoC: deep learning to mobile devices, *Deep Neural Network SoC Workshop*, Aug., 2016.
+- Low-power Pattern recognition SoC with bio-inspired architecture for intelligent cognitive service, *IEEE International Conference on Intelligent Robots and Systems (IROS) Workshops*, Spt., 2015.
+- An energy-efficient SoC for real-time context-aware object recognition, *Samsung Research America*, Spt., 2014.
+- An energy-efficient heterogeneous many-core processor for real-world object recognition, *Qualcomm*, Feb., 2013.
