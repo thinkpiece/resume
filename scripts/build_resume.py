@@ -193,7 +193,7 @@ def _write_document(doc, fmt: str, out: Path) -> int:
     tmp: Path | None = None
     try:
         out.parent.mkdir(parents=True, exist_ok=True)
-        fd, name = tempfile.mkstemp(dir=out.parent, prefix=f".{out.name}.", suffix=".tmp")
+        fd, name = tempfile.mkstemp(dir=out.parent, prefix=".resume-", suffix=".tmp")
         tmp = Path(name)
         with os.fdopen(fd, "wb") as f:
             f.write(data)

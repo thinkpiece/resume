@@ -271,6 +271,14 @@ class CliNoTypstTest(CliTestBase):
                          [".x.html.tmp"])
         self.assertEqual(out.stat().st_mode & 0o777, 0o666 & ~build_resume._umask())
 
+    def test_write_longest_file_name(self):   # the temporary name must not be longer
+        src = self.write_src("## S\n- x\n")
+        out = self.root / ("n" * 250 + ".html")
+        with mock.patch.object(build_resume, "emit_html", return_value="<html>"):
+            code = build_resume.main([str(src), "--variant", "full", "-o", str(out)])
+        self.assertEqual(code, 0)
+        self.assertTrue(out.exists())
+
     def test_failed_write_leaves_no_output(self):
         src = self.write_src("## S\n- x\n")
         outdir = self.root / "ro"
