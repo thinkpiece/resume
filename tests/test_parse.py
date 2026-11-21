@@ -98,6 +98,23 @@ class FrontMatterTest(ParseTestBase):
         self.assertParseError("", r":3: lang must be 'en' or 'ko'",
                               fm="---\nname: A\nlang: english\n---\n")
 
+    def test_unknown_paper_errors(self):   # D2
+        self.assertParseError("", r":4: unknown paper 'typo-letter'",
+                              fm="---\nname: A\nlang: en\npaper: typo-letter\n---\n")
+
+    def test_typst_paper_names_accepted(self):
+        for paper in ("a4", "us-letter", "presentation-16-9", "fr-tellière", "jis-b5"):
+            with self.subTest(paper=paper):
+                self.assertEqual(self.doc("", fm=f"---\nname: A\npaper: {paper}\n---\n").meta.paper,
+                                 paper)
+
+    def test_front_matter_origins(self):   # D2: keep the line of every key
+        root = self.write("root.md", "---\nname: A\n\nfont: X, Y\nemail: a@b.c\n---\n")
+        m = parse(load_lines(root)).meta
+        self.assertEqual({k: (l.path, l.lineno) for k, l in m.origins.items()},
+                         {"name": (root, 2), "font": (root, 4), "email": (root, 5),
+                          "lang": (root, 1), "paper": (root, 1)})
+
     def test_empty_font_list(self):
         self.assertParseError("", r":3: font needs at least one font name",
                               fm="---\nname: A\nfont: ,\n---\n")

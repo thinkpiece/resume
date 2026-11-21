@@ -129,20 +129,64 @@ class CliBuildTest(CliTestBase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("pages", r.stderr)
 
-    def test_unknown_font_fails(self):   # clarification 2
+    def test_unknown_font_fails(self):   # clarification 2, D2
         out = self.root / "build" / "font.pdf"
         src = self.write_src("## S\n- x\n", fm="---\nname: N\nfont: NoSuchFont123, Charter\n---\n")
         r = self.run_cli(src, "--variant", "full", "-o", out)
         self.assertEqual(r.returncode, 1, r.stderr)
-        self.assertIn("NoSuchFont123", r.stderr)
-        self.assertRegex(r.stderr, r"(?m)^error: ")
+        self.assertTrue(r.stderr.startswith(f"{src}:3: "), r.stderr)
+        self.assertIn("'NoSuchFont123'", r.stderr)
+        self.assertNotIn("unknown font family", r.stderr)   # caught before Typst compiles
         self.assertFalse(out.exists())
 
     def test_unknown_fallback_font_fails(self):
-        src = self.write_src("## S\n- x\n", fm="---\nname: N\nfont: Charter, NoSuchFallback9\n---\n")
+        src = self.write_src("## S\n- x\n",
+                             fm="---\nname: N\nlang: en\nfont: Charter, NoSuchFallback9\n---\n")
         r = self.run_cli(src, "--variant", "full")
         self.assertEqual(r.returncode, 1, r.stderr)
-        self.assertIn("NoSuchFallback9", r.stderr)
+        self.assertTrue(r.stderr.startswith(f"{src}:4: "), r.stderr)
+        self.assertIn("'NoSuchFallback9'", r.stderr)
+        self.assertNotIn("'Charter'", r.stderr)
+
+    def test_font_names_match_case_insensitively(self):
+        src = self.write_src("## S\n- x\n", fm="---\nname: N\nfont: charter\n---\n")
+        r = self.run_cli(src, "--variant", "full")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stderr, "")
+
+    def test_default_font_error_points_at_front_matter_start(self):
+        # Hide every font from Typst, so even the default Charter is missing.
+        env_root = self.root / "bin"
+        env_root.mkdir()
+        wrapper = env_root / "typst"
+        wrapper.write_text(f"#!/bin/sh\nTYPST_IGNORE_SYSTEM_FONTS=true TYPST_IGNORE_EMBEDDED_FONTS=true "
+                           f"exec {shutil.which('typst')} \"$@\"\n")
+        wrapper.chmod(0o755)
+        src = self.write_src("## S\n- x\n")
+        r = self.run_cli(src, "--variant", "full", path=f"{env_root}:/usr/bin:/bin")
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertTrue(r.stderr.startswith(f"{src}:1: "), r.stderr)
+        self.assertIn("'Charter'", r.stderr)
+
+    def test_unknown_template_font_fails(self):   # clarification 2
+        stub = (FIXTURES / "stub_template.typ").read_text(encoding="utf-8")
+        broken = stub.replace("set text(font: fonts,", 'set text(font: ("NoTemplateFont7",) + fonts,')
+        self.assertNotEqual(stub, broken)
+        (self.root / "template" / "resume.typ").write_text(broken, encoding="utf-8")
+        out = self.root / "build" / "tf.pdf"
+        r = self.run_cli(self.write_src("## S\n- x\n"), "--variant", "full", "-o", out)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertRegex(r.stderr, r"(?m)^error: Typst could not find font 'notemplatefont7'")
+        self.assertFalse(out.exists())
+
+    def test_stale_pdf_removed_when_font_check_fails(self):   # D3
+        out = self.root / "build" / "stale.pdf"
+        out.parent.mkdir()
+        out.write_bytes(b"%PDF-old")
+        src = self.write_src("## S\n", fm="---\nname: N\nfont: NoSuchFont123\n---\n")
+        r = self.run_cli(src, "--variant", "full", "-o", out)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertFalse(out.exists())
 
     def test_stale_pdf_removed_when_build_fails(self):
         out = self.root / "build" / "stale.pdf"
@@ -173,6 +217,32 @@ class CliStubTemplateTest(CliTestBase):
 
 class CliNoTypstTest(CliTestBase):
     """Behavior that does not need Typst to run."""
+
+    def test_unknown_paper_fails_before_typst(self):   # D2
+        out = self.root / "build" / "paper.pdf"
+        src = self.write_src("## S\n- x\n", fm="---\nname: N\npaper: typo-letter\n---\n")
+        r = self.run_cli(src, "--variant", "full", "-o", out, path="/nonexistent")
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertTrue(r.stderr.startswith(f"{src}:3: unknown paper 'typo-letter'"), r.stderr)
+        self.assertFalse(out.exists())
+
+    def test_failed_runs_leave_no_pdf(self):   # D3
+        self.write_src("- a\n", fm="", name="inc.md")
+        cases = {
+            "parse": ("## S\n- x {.ful}\n", None),
+            "include": ("## S\n@missing.md\n", None),
+            "paper": ("## S\n", "---\nname: N\npaper: typo-letter\n---\n"),
+            "no typst": ("## S\n@inc.md\n", None),
+        }
+        for name, (body, fm) in cases.items():
+            with self.subTest(case=name):
+                out = self.root / "out" / "stale.pdf"
+                out.parent.mkdir(exist_ok=True)
+                out.write_bytes(b"%PDF-old")
+                src = self.write_src(body, **({"fm": fm} if fm else {}))
+                r = self.run_cli(src, "--variant", "full", "-o", out, path="/nonexistent")
+                self.assertEqual(r.returncode, 1, r.stderr)
+                self.assertFalse(out.exists(), r.stderr)
 
     def test_parse_error_format(self):
         src = self.write_src("## S\n- x {.ful}\n")

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 VARIANTS = frozenset({"full", "short"})
@@ -25,6 +25,9 @@ class Meta:
     fonts: list[str]
     highlight: str | None
     contacts: list[tuple[str, str]]   # (kind, value) in front-matter order
+    # Front-matter line of each key, for error messages. Keys left at their
+    # default (lang, paper, font) point at the opening "---" line.
+    origins: dict[str, Line] = field(default_factory=dict)
 
 
 @dataclass

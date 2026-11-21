@@ -46,6 +46,27 @@ def font_paths() -> list[str]:
     return [d for d in sorted(glob.glob(FONT_DIR_GLOB)) if os.path.isdir(d)]
 
 
+def typst_font_flags() -> list[str]:
+    flags: list[str] = []
+    for d in font_paths():
+        flags += ["--font-path", d]
+    return flags
+
+
+def missing_fonts(typst: str, fonts: list[str]) -> list[str]:
+    """Fonts from `fonts` that `typst fonts` does not list (case-insensitive).
+
+    Returns [] when `typst fonts` itself fails; the compile step still turns
+    Typst's "unknown font family" warning into an error.
+    """
+    r = subprocess.run([typst, "fonts", *typst_font_flags()], capture_output=True,
+                       text=True, encoding="utf-8", errors="replace")
+    if r.returncode != 0:
+        return []
+    known = {line.strip().lower() for line in r.stdout.splitlines() if line.strip()}
+    return [f for f in fonts if f.lower() not in known]
+
+
 def count_pdf_pages(pdf: Path, use_pdfinfo: bool = True) -> int:
     """Number of pages in `pdf`, via pdfinfo when available."""
     pdfinfo = shutil.which("pdfinfo") if use_pdfinfo else None
@@ -80,6 +101,9 @@ def main(argv: list[str] | None = None) -> int:
     out = args.output or root / "build" / f"{Path(args.src).stem}_{args.variant}.pdf"
     # Typst only reads sources under --root, so the .typ always goes there.
     typ = root / "build" / f"{out.stem}.typ"
+    # Remove the old PDF first, so a failed run never leaves one behind.
+    if out.exists():
+        out.unlink()
 
     try:
         doc = filter_variant(parse(load_lines(Path(args.src))), args.variant)
@@ -99,14 +123,17 @@ def main(argv: list[str] | None = None) -> int:
         print("error: typst not found; install it with: brew install typst", file=sys.stderr)
         return 1
 
+    missing = missing_fonts(typst, doc.meta.fonts)
+    if missing:
+        line = doc.meta.origins["font"]
+        names = ", ".join(f"'{f}'" for f in missing)
+        print(f"{line.path}:{line.lineno}: font not found: {names}; "
+              "`typst fonts` lists the fonts Typst can use", file=sys.stderr)
+        return 1
+
     out.parent.mkdir(parents=True, exist_ok=True)
-    if out.exists():
-        out.unlink()   # never leave an old PDF behind a failed build
-    cmd = [typst, "compile", "--root", str(root)]
-    for d in font_paths():
-        cmd += ["--font-path", d]
-    cmd += [str(typ), str(out)]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    cmd = [typst, "compile", "--root", str(root), *typst_font_flags(), str(typ), str(out)]
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     sys.stderr.write(r.stderr)
     if r.returncode != 0:
         print(f"error: typst could not compile {typ}", file=sys.stderr)
@@ -116,10 +143,9 @@ def main(argv: list[str] | None = None) -> int:
     if unknown:
         if out.exists():
             out.unlink()
-        by_lower = {f.lower(): f for f in doc.meta.fonts}
-        names = ", ".join(f"'{by_lower.get(n, n)}'" for n in unknown)
-        print(f"error: font not found: {names}; check the 'font' line of {args.src} "
-              "against `typst fonts`", file=sys.stderr)
+        names = ", ".join(f"'{n}'" for n in unknown)
+        print(f"error: Typst could not find font {names} (used by the template)",
+              file=sys.stderr)
         return 1
 
     if args.variant == "short":

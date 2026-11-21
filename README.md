@@ -39,9 +39,11 @@ python3 scripts/build_resume.py content/en/resume.md --variant short -o build/en
 python3 scripts/build_resume.py content/en/resume.md --variant full --typ-only   # write the .typ only
 ```
 
-The build fails with `<file>:<line>: <message>` on any malformed line, and
-when Typst cannot find a font from the `font` list. A short variant longer
-than one page builds, with a warning that gives the page count.
+The build fails with `<file>:<line>: <message>` on any malformed line, on a
+`paper` name Typst does not know, and on a `font` that Typst cannot find; the
+last two point at their front-matter line. A failed build leaves no PDF at
+the output path. A short variant longer than one page still builds, with a
+warning that gives the page count.
 
 ## Folder layout
 
@@ -71,6 +73,7 @@ build/                    generated .typ and .pdf files (git-ignored)
 Every root file starts with flat `key: value` lines between `---` lines.
 ` #` starts a comment. Included files must not have front matter.
 
+<!-- example: front-matter -->
 ```markdown
 ---
 name: Junyoung Park
@@ -95,18 +98,19 @@ become links. Any other key is an error.
 
 ### Body
 
+<!-- example: body -->
 ```markdown
-## Work Experience                              ← section: uppercase title with a rule
+## Work Experience
 
-### UX Factory, Inc. | Aug. 2015 - Present      ← entry: bold title, date on the right
-Co-founder and Chief Executive Officer | Seoul  ← subtitle (first plain line): italic, optional right text
-- Founded a company that delivers AI solutions  ← bullet
-- Gave a keynote | Dec. 2025                    ← bullet with a right-aligned date
+### UX Factory, Inc. | Aug. 2015 - Present
+Co-founder and Chief Executive Officer | Seoul
+- Founded a company that delivers AI solutions
+- Gave a keynote | Dec. 2025
 
 ## Journal Papers
-- A 54 μW Chip, *IEEE JSSC*, 2014.              ← bullets may sit directly under a section
-  S. Park, Junyoung Park, H.-J. Yoo.            ← indented (2+ spaces): a smaller detail line
-  - presented and demonstrated at ISSCC         ←   taken literally, so the "- " prints
+- A 54 μW Chip, *IEEE JSSC*, 2014.
+  S. Park, Junyoung Park, H.-J. Yoo.
+  - presented and demonstrated at ISSCC
 
 ## Summary
 A plain line directly under a section is a paragraph.
@@ -114,13 +118,25 @@ A plain line directly under a section is a paragraph.
 <!-- comments are removed, and may span lines -->
 ```
 
+This prints:
+
+- **WORK EXPERIENCE**: a section, with an uppercase title and a rule below it.
+- **UX Factory, Inc.** in bold with `Aug. 2015 - Present` on the right. The
+  first plain line after an entry is its subtitle, in italics, here with
+  `Seoul` on the right. Then two bullets; the second has `Dec. 2025` on the right.
+- **JOURNAL PAPERS**: bullets may sit directly under a section. The indented
+  lines are smaller detail lines of the bullet above them. They are taken
+  literally, so `- presented …` prints its dash.
+- **SUMMARY**: a plain line directly under a section is a paragraph. The
+  comment prints nothing.
+
 | You write | You get |
 |---|---|
 | `## Title` | section |
 | `### Title \| date` | entry; the date part is optional |
 | plain line right after `###` | subtitle, optionally `\| right text` |
 | `- text` / `- text \| date` | bullet / bullet with a date |
-| indented line under a bullet | detail line of that bullet (no nested bullets) |
+| indented line (2+ spaces) under a bullet | detail line of that bullet (no nested bullets) |
 | plain line under `##` (no `###` open) | paragraph |
 | `<!-- … -->` | comment |
 
@@ -134,10 +150,11 @@ A plain line directly under a section is a paragraph.
 
 ### Full and short variants
 
-Every line is in **both** variants unless its end carries a marker:
+Every line is in **both** variants unless it ends with a marker. The marker
+must be the last thing on the line, after the date part:
 
-- `{.full}` — only in the full variant
-- `{.short}` — only in the short variant
+- `{.full}`: only in the full variant
+- `{.short}`: only in the short variant
 
 | Marked line | What the marker covers |
 |---|---|
@@ -147,17 +164,29 @@ Every line is in **both** variants unless its end carries a marker:
 | subtitle or paragraph | that line |
 | `@file.md {.full}` | everything the file (and its includes) brings in |
 
+<!-- example: variants -->
 ```markdown
 ## Awards
-- Best Paper Award | Apr. 2009                       ← both variants
-- Eun Jong-Kwan Scholarship Award | Apr. 2009 {.full}  ← marker goes after the date
+- Best Paper Award | Apr. 2009
+- Eun Jong-Kwan Scholarship Award | Apr. 2009 {.full}
 
 ## Activities
-- Over 20 invited talks on AI semiconductors. {.short}  ← replaces a long list in the short PDF
+- Over 20 invited talks on AI semiconductors. {.short}
+- Technical Program Committee, ISSCC | 2024
+
+## Invited Talks {.full}
+- AI Semiconductor Strategies, *Kyung Hee University*, Nov., 2024.
 
 ## Research Output {.short}
 - 10 journal and 25 conference papers, 18 registered patents
 ```
+
+| Section | Full PDF | Short PDF |
+|---|---|---|
+| Awards | both awards | Best Paper Award only |
+| Activities | the committee bullet only | the talks summary and the committee bullet |
+| Invited Talks | shown | left out |
+| Research Output | left out | shown |
 
 - Markers nest by intersection. A `{.short}` inside a `{.full}` section can
   never appear; the build warns with file and line.
@@ -172,20 +201,24 @@ A line holding only `@path.md` (optionally followed by a marker) is replaced
 by that file's lines. Paths are relative to the including file. Includes nest;
 a cycle or a missing file is an error that names the file and line.
 
+<!-- example: include -->
 ```markdown
 ## Publications {.full}
 ### Journal Papers
 @../shared/journals.md {.full}
 ```
 
-The shared lists hold bullets only, so each language writes its own headings
-(`### 국제 저널 논문` in the Korean file includes the same `journals.md`).
+Written in `content/en/resume.md`, this pulls in every bullet of
+`content/shared/journals.md`, in the full PDF only. The shared lists hold
+bullets only, so each language writes its own headings (`### 국제 저널 논문`
+in the Korean file includes the same `journals.md`).
 
 ## Common edits
 
 **Add a talk or paper.** Add one bullet to the shared list, newest first; both
 languages pick it up on the next `make`:
 
+<!-- example: talk -->
 ```markdown
 - Title of the Talk, *Venue Name*, Dec., 2026.
 ```
@@ -193,6 +226,7 @@ languages pick it up on the next `make`:
 Papers take the author line as an indented detail line (your name is
 highlighted automatically):
 
+<!-- example: paper -->
 ```markdown
 - Title of the Paper, *IEEE Journal of Solid-State Circuits*, vol. 1, pp. 1-10, 2026.
   A. Kim, Junyoung Park, B. Lee.
