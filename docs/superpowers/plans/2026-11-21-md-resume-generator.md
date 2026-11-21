@@ -319,7 +319,7 @@ def test_never_visible_item_absent_from_both(self): ...
 - Consumes: `load_lines`, `parse`, `filter_variant`; template API and emitted shape from Shared interfaces.
 - Produces: `inline_to_typst(text: str, highlight: str | None = None) -> str`; `emit_typst(doc: Document) -> str`; CLI `python3 scripts/build_resume.py SRC --variant {full,short} [-o OUT.pdf] [--typ-only]` (default OUT: `build/<stem>_<variant>.pdf`; the `.typ` is written to OUT with suffix `.typ`).
 
-Contact URL rules: `email` → `mailto:`, `phone` → `tel:` + value without spaces, `homepage`/`linkedin`/`github` → value, `location` → `none`.
+Contact URL rules: `email` → `mailto:`, `phone` → `tel:` + the value with everything except digits and a leading `+` removed, `homepage`/`linkedin`/`github` → value, `location` → `none`.
 
 - [ ] **Step 1: Write failing tests**
 
