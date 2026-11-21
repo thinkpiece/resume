@@ -294,8 +294,9 @@ PAPER_SIZES_MM: dict[str, tuple[float, float]] = {
     "us-letter": (215.9, 279.4), "us-legal": (215.9, 355.6),
     "us-tabloid": (279.4, 431.8), "us-ledger": (431.8, 279.4),
     "us-executive": (184.15, 266.7),
-    "ansi-a": (215.9, 279.4), "ansi-b": (279.4, 431.8), "ansi-c": (431.8, 558.8),
-    "ansi-d": (558.8, 863.6), "ansi-e": (863.6, 1117.6),
+    # Typst rounds the ANSI sizes to whole millimetres.
+    "ansi-a": (216.0, 279.0), "ansi-b": (279.0, 432.0), "ansi-c": (432.0, 559.0),
+    "ansi-d": (559.0, 864.0), "ansi-e": (864.0, 1118.0),
 }
 FALLBACK_PAPER = "a4"
 
