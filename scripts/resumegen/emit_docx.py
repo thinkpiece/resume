@@ -82,7 +82,7 @@ class _Body:
         return f'<w:hyperlink r:id="{rel_id}">{runs}</w:hyperlink>'
 
     def _inline(self, nodes: tuple[Node, ...], *, bold: bool = False,
-                italic: bool = False, aside: bool = False) -> str:
+                italic: bool, paragraph_italic: bool, aside: bool) -> str:
         runs = []
         for node in nodes:
             if isinstance(node, (Text, Highlight)):
@@ -92,10 +92,9 @@ class _Body:
                     props += "<w:b/><w:bCs/>"
                 elif aside:
                     props += '<w:b w:val="0"/><w:bCs w:val="0"/>'
-                if italic:
-                    props += "<w:i/><w:iCs/>"
-                elif aside:
-                    props += '<w:i w:val="0"/><w:iCs w:val="0"/>'
+                if aside or italic != paragraph_italic:
+                    value = "" if italic else ' w:val="0"'
+                    props += f"<w:i{value}/><w:iCs{value}/>"
                 if aside:
                     props += f'<w:color w:val="{LOOK.gray}"/>' + _size(LOOK.text_pt)
                 if highlight:
@@ -103,17 +102,23 @@ class _Body:
                 runs.append(self._run(node.text, props))
             else:
                 inner = self._inline(node.children, bold=bold or isinstance(node, Strong),
-                                     italic=italic or isinstance(node, Emph), aside=aside)
+                                     italic=italic ^ isinstance(node, Emph),
+                                     paragraph_italic=paragraph_italic, aside=aside)
                 runs.append(self._link(node.url, inner) if isinstance(node, Link) else inner)
         return "".join(runs)
 
-    def _text(self, text: str | None, *, aside: bool = False) -> str:
-        return "" if text is None else self._inline(parse_inline(text, self.highlight), aside=aside)
+    def _text(self, text: str | None, *, paragraph_italic: bool = False, aside: bool = False) -> str:
+        if text is None:
+            return ""
+        return self._inline(parse_inline(text, self.highlight),
+                            italic=paragraph_italic and not aside,
+                            paragraph_italic=paragraph_italic, aside=aside)
 
-    def _row(self, left: str | None, right: str | None, prefix: str = "") -> str:
-        runs = prefix + self._text(left)
+    def _row(self, left: str | None, right: str | None, prefix: str = "",
+             *, paragraph_italic: bool = False) -> str:
+        runs = prefix + self._text(left, paragraph_italic=paragraph_italic)
         if right is not None:
-            runs += self._run("\t") + self._text(right, aside=True)
+            runs += self._run("\t") + self._text(right, paragraph_italic=paragraph_italic, aside=True)
         return runs
 
     def _item(self, item: Item) -> list[str]:
@@ -143,7 +148,8 @@ class _Body:
                 if isinstance(child, Entry):
                     paragraphs.append(_paragraph("ResumeEntry", self._row(child.title, child.date)))
                     if child.subtitle is not None or child.side is not None:
-                        paragraphs.append(_paragraph("ResumeSubtitle", self._row(child.subtitle, child.side)))
+                        runs = self._row(child.subtitle, child.side, paragraph_italic=True)
+                        paragraphs.append(_paragraph("ResumeSubtitle", runs))
                     for item in child.items:
                         paragraphs.extend(self._item(item))
                 elif isinstance(child, Item):
