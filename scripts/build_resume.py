@@ -78,6 +78,11 @@ def count_pdf_pages(pdf: Path, use_pdfinfo: bool = True) -> int:
     return len(re.findall(rb"/Type\s*/Page(?![A-Za-z])", pdf.read_bytes()))
 
 
+def _remove(path: Path) -> None:
+    if path.exists():
+        path.unlink()
+
+
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(
         prog="build_resume.py",
@@ -101,9 +106,10 @@ def main(argv: list[str] | None = None) -> int:
     out = args.output or root / "build" / f"{Path(args.src).stem}_{args.variant}.pdf"
     # Typst only reads sources under --root, so the .typ always goes there.
     typ = root / "build" / f"{out.stem}.typ"
-    # Remove the old PDF first, so a failed run never leaves one behind.
-    if out.exists():
-        out.unlink()
+    # Remove the old PDF first, so a failed build never leaves one behind.
+    # --typ-only produces no PDF, so it leaves the output path alone.
+    if not args.typ_only:
+        _remove(out)
 
     try:
         doc = filter_variant(parse(load_lines(Path(args.src))), args.variant)
@@ -136,13 +142,13 @@ def main(argv: list[str] | None = None) -> int:
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     sys.stderr.write(r.stderr)
     if r.returncode != 0:
+        _remove(out)   # Typst may have written part of a PDF before failing
         print(f"error: typst could not compile {typ}", file=sys.stderr)
         return 1
 
     unknown = [name.strip() for name in _UNKNOWN_FONT_RE.findall(r.stderr)]
     if unknown:
-        if out.exists():
-            out.unlink()
+        _remove(out)
         names = ", ".join(f"'{n}'" for n in unknown)
         print(f"error: Typst could not find font {names} (used by the template)",
               file=sys.stderr)

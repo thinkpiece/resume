@@ -269,6 +269,38 @@ class CliNoTypstTest(CliTestBase):
         self.assertTrue((self.root / "build" / "src_full.typ").exists())
         self.assertFalse((self.root / "build" / "src_full.pdf").exists())
 
+    def test_typ_only_keeps_existing_pdf(self):   # T10: --typ-only does not touch the PDF
+        out = self.root / "out" / "keep.pdf"
+        out.parent.mkdir()
+        for body in ("## S\n- x\n", "## S\n- x {.ful}\n"):
+            with self.subTest(body=body):
+                out.write_bytes(b"%PDF-keep")
+                r = self.run_cli(self.write_src(body), "--variant", "full", "-o", out,
+                                 "--typ-only", path="/nonexistent")
+                self.assertEqual(r.returncode, 0 if "ful}" not in body else 1, r.stderr)
+                self.assertEqual(out.read_bytes(), b"%PDF-keep")
+
+    def test_partial_pdf_removed_after_typst_failure(self):   # T10
+        bindir = self.root / "bin"
+        bindir.mkdir()
+        fake = bindir / "typst"
+        # Lists every font the source asks for; "compile" writes its output
+        # (the last argument) and then fails.
+        fake.write_text('#!/bin/sh\n'
+                        'if [ "$1" = fonts ]; then echo Charter; exit 0; fi\n'
+                        'for last; do :; done\n'
+                        'printf "%%PDF-partial" > "$last"\n'
+                        'echo "error: fake failure" >&2\n'
+                        'exit 1\n')
+        fake.chmod(0o755)
+        out = self.root / "out" / "partial.pdf"
+        r = self.run_cli(self.write_src("## S\n- x\n"), "--variant", "full", "-o", out,
+                         path=f"{bindir}:/usr/bin:/bin")
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("fake failure", r.stderr)
+        self.assertRegex(r.stderr, r"(?m)^error: typst could not compile")
+        self.assertFalse(out.exists())
+
     def test_crlf_bom_twin_emits_same_typ(self):   # Review Focus 1
         twin = self.root / "twin"
         shutil.copytree(FIXTURES, twin)
