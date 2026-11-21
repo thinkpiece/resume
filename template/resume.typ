@@ -117,8 +117,11 @@
   show regex("\\S*\\p{Hangul}\\S*"): box
 
   // Header: name, job title, then one wrapping line of contact items.
+  // The name is uppercased only in English; elsewhere it prints as written
+  // (owner: the Korean header reads "박준영 (Junyoung Park)").
   block(width: 100%, below: _header-below, {
-    text(size: _name-size, weight: "bold", tracking: 0.03em, upper(name))
+    let shown = if lang == "en" { upper(name) } else { name }
+    text(size: _name-size, weight: "bold", tracking: 0.03em, shown)
     if title != none {
       v(0.75em, weak: true)
       text(size: _title-size, title)
