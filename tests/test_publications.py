@@ -1,5 +1,7 @@
 import json
+import os
 import string
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -352,6 +354,73 @@ class LoadTest(TempDirTest):
             item = schema["$defs"][item["$ref"].removeprefix("#/$defs/")]
         self.assertEqual(set(item["required"]), REQUIRED_FIELDS)
         self.assertEqual(set(item["properties"]), KNOWN_FIELDS)
+
+
+class StrictJsonTest(TempDirTest):   # clarification 16
+    def cases(self):
+        """(name, file text, line, message) for each non-standard input."""
+        # The first title holds "NaN" inside a string, with escaped quotes.
+        nan = dump(document(tcas(title='Not "NaN" here'), isscc(sci=float("nan"))))
+        inf = dump(document(isscc(year=float("inf"))))
+        minus_inf = dump(document(isscc(), extra=float("-inf")))
+        surrogate = dump(document(tcas(), isscc(title="Title X"))).replace(
+            "Title X", "Title \\ud800")
+        author = dump(document(isscc(authors=["Junyoung Park", "A X"]))).replace(
+            "A X", "A \\udfff")
+        venue = dump(document(isscc(venue={"name": "V X"}))).replace("V X", "V \\udc00")
+        schema = dump(document(isscc(), **{"$schema": 1}))
+        return [
+            ("NaN in an extension field", nan, line_of(nan, '"sci": NaN'),
+             "invalid JSON: NaN is not standard JSON"),
+            ("Infinity", inf, line_of(inf, '"year": Infinity'),
+             "invalid JSON: Infinity is not standard JSON"),
+            ("-Infinity at the top", minus_inf, line_of(minus_inf, '"extra": -Infinity'),
+             "invalid JSON: -Infinity is not standard JSON"),
+            ("lone surrogate in a title", surrogate, line_of(surrogate, ISSCC_ID),
+             'isscc-2013-park: "title" must not hold a lone surrogate'),
+            ("lone surrogate in an author", author, line_of(author, ISSCC_ID),
+             'isscc-2013-park: "authors" must not hold a lone surrogate'),
+            ("lone surrogate in a venue", venue, line_of(venue, ISSCC_ID),
+             'isscc-2013-park: "venue.name" must not hold a lone surrogate'),
+            ("numeric $schema", schema, 1, '"$schema" must be a string'),
+        ]
+
+    def test_errors(self):
+        for name, text, line, message in self.cases():
+            with self.subTest(name):
+                path = self.write("p.json", text)
+                with self.assertRaises(ResumeError) as cm:
+                    load_publications(path)
+                self.assertEqual(str(cm.exception), f"{path}:{line}: {message}")
+
+    def test_cli_exits_1_with_the_message(self):
+        md = self.write("en/resume.md", "---\nname: Junyoung Park\n---\n## P\n"
+                        "### Papers\n@../shared/p.json conference\n")
+        env = dict(os.environ, RESUME_ROOT=str(self.d))
+        for name, text, line, message in self.cases():
+            with self.subTest(name):
+                path = self.write("shared/p.json", text)
+                r = subprocess.run([sys.executable, str(ROOT / "scripts" / "build_resume.py"),
+                                    str(md), "--variant", "full",
+                                    "-o", str(self.d / "out.html")],
+                                   capture_output=True, text=True, env=env, cwd=self.d)
+                self.assertEqual(r.returncode, 1)
+                self.assertEqual(r.stderr, f"{path}:{line}: {message}\n")
+
+    def test_standard_look_alikes_load(self):
+        title = 'NaN, -Infinity and \\"Infinity\\" \U0001F600'
+        text = dump(document(isscc(title=title, sci="NaN", note=["Infinity"])))
+        pubs = load_publications(self.write("p.json", text))
+        self.assertEqual(pubs.items[0].title, title)
+        pair = dump(document(isscc(title="T X"))).replace("T X", "T \\ud83d\\ude00")
+        self.assertEqual(load_publications(self.write("q.json", pair)).items[0].title,
+                         "T \U0001F600")
+        text = dump(document(isscc(), **{"$schema": "./publications.schema.json"}))
+        self.assertEqual(len(load_publications(self.write("r.json", text)).items), 1)
+
+    def test_real_data_file_loads(self):
+        pubs = load_publications(ROOT / "content" / "shared" / "publications.json")
+        self.assertEqual(len(pubs.items), 36)
 
 
 def pub(**fields) -> Publication:

@@ -30,6 +30,11 @@ _OPTIONAL_TEXT = ("volume", "issue", "pages", "location", "doi", "url")
 
 _ID_RE = re.compile(r"[a-z0-9-]+")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
+# json.loads joins an escaped surrogate pair into one character, so any
+# surrogate left in a decoded string is a lone one.
+_SURROGATE_RE = re.compile("[\ud800-\udfff]")
+# A JSON string, or one of the non-standard constants Python's json accepts.
+_CONSTANT_RE = re.compile(r'"(?:[^"\\]|\\.)*"|(-?Infinity|NaN)', re.S)
 _WS_RE = re.compile(r"[ \t\n\r]*")
 _DECODER = json.JSONDecoder()
 
@@ -77,6 +82,14 @@ class _Invalid(Exception):
     """A problem in one value; the caller adds the file, line and item."""
 
 
+class _NonStandard(Exception):
+    """NaN, Infinity or -Infinity: Python reads them, standard JSON does not."""
+
+
+def _reject_constant(name: str):
+    raise _NonStandard(name)
+
+
 def load_publications(path: Path, include_line: Line | None = None) -> Publications:
     """Read and check the publications file at `path`.
 
@@ -85,15 +98,20 @@ def load_publications(path: Path, include_line: Line | None = None) -> Publicati
     """
     text = _read(path, include_line)
     try:
-        data = json.loads(text)
+        data = json.loads(text, parse_constant=_reject_constant)
     except json.JSONDecodeError as e:
         raise ResumeError(f"{path}:{e.lineno}: invalid JSON: {e.msg}") from None
+    except _NonStandard as e:
+        raise ResumeError(f"{path}:{_constant_line(text)}: invalid JSON: "
+                          f"{e} is not standard JSON") from None
 
     def top_error(message: str) -> ResumeError:
         return ResumeError(f"{path}:1: {message}")
 
     if not isinstance(data, dict):
         raise top_error("the top level must be a JSON object")
+    if "$schema" in data and not isinstance(data["$schema"], str):
+        raise top_error('"$schema" must be a string')
     if "schema" not in data:
         raise top_error('missing "schema"')
     if not _is_int(data["schema"]) or data["schema"] != SCHEMA_VERSION:
@@ -188,6 +206,8 @@ def _text(value, name: str) -> str:
         raise _Invalid(f'"{name}" must not be empty')
     if _CONTROL_RE.search(value):
         raise _Invalid(f'"{name}" must be one line without control characters')
+    if _SURROGATE_RE.search(value):
+        raise _Invalid(f'"{name}" must not hold a lone surrogate')
     if value != value.strip():
         raise _Invalid(f'"{name}" must not start or end with a space')
     return value
@@ -322,6 +342,14 @@ def _read(path: Path, include_line: Line | None) -> str:
         lineno = data.count(b"\n", 0, e.start) + 1
         raise ResumeError(f"{path}:{lineno}: invalid UTF-8 text") from None
     return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _constant_line(text: str) -> int:
+    """Line of the first NaN, Infinity or -Infinity outside a string."""
+    for m in _CONSTANT_RE.finditer(text):
+        if m.group(1):
+            return text.count("\n", 0, m.start()) + 1
+    return 1
 
 
 def _item_lines(text: str) -> list[int]:
