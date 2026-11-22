@@ -3,6 +3,8 @@
 - load_publications(): read, check and locate every item of the data file.
 - select(): the items of one type, newest first.
 - format_item(): one item as the two Markdown lines of the resume lists.
+- include_lines(): the lines a "@<file>.json <type> [first-author]" include
+  line stands for (source.py dispatches to it).
 
 Every item remembers the line of its own "id" key (or of its opening "{" when
 it has none), so errors point into the JSON file.
@@ -33,6 +35,8 @@ _DECODER = json.JSONDecoder()
 
 MONTHS = ("Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.", "Sept.",
           "Oct.", "Nov.", "Dec.")
+MALFORMED_INCLUDE = ("malformed .json include; write "
+                     "@<file>.json <type> [first-author] [{.full}|{.short}]")
 # Characters the resume Markdown dialect gives a meaning (spec §6).
 _SPECIAL = frozenset("\\*_[]|{")
 
@@ -191,6 +195,36 @@ def _text(value, name: str) -> str:
 
 def _is_int(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def include_lines(path: Path, words: list[str], include_line: Line,
+                  scope: frozenset[str]) -> list[Line]:
+    """The resume lines for an include of `path` with `words` (spec §5).
+
+    Each selected item gives a bullet line and an author line located at the
+    item's line in the JSON file, with the include's variant `scope`.
+    """
+    type_, first_author = _include_words(words, include_line)
+    pubs = load_publications(path, include_line)
+    return [Line(text=text, path=path, lineno=pub.lineno, scope=scope)
+            for pub in select(pubs, type_, first_author)
+            for text in format_item(pub, pubs.owner)]
+
+
+def _include_words(words: list[str], include_line: Line) -> tuple[str, bool]:
+    """Check the words after the path: exactly `<type> [first-author]`."""
+    for word in words:
+        if word not in TYPES and word != "first-author":
+            raise at(include_line, f'unknown word "{word}" in a .json include; '
+                                   "use journal, conference or first-author")
+    types = [w for w in words if w in TYPES]
+    if not types:
+        raise at(include_line, "a .json include needs a type: journal or conference")
+    if len(types) > 1:
+        raise at(include_line, "a .json include takes one type")
+    if words not in ([types[0]], [types[0], "first-author"]):
+        raise at(include_line, MALFORMED_INCLUDE)
+    return types[0], len(words) == 2
 
 
 # --------------------------------------------------------------------------

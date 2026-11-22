@@ -1,6 +1,5 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "publications.schema.json",
   "title": "Publications",
   "description": "Journal and conference papers as structured fields; each generator formats them its own way. Fields not listed here are allowed and ignored by the resume generator. The resume build also checks what a schema cannot: ids are unique, month_end is after month, and the owner is among each item's authors.",
   "type": "object",

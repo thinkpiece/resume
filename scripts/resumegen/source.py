@@ -1,5 +1,8 @@
 """Read resume Markdown files: normalize, strip comments, resolve @includes.
 
+An "@<file>.json ..." include stands for lines that publications.py formats
+from the JSON file; they keep the JSON file's path and item line numbers.
+
 The result is a flat list of `Line`s. Every line remembers the file and line
 number that physically hold it, and the variants its enclosing `@include`
 markers allow.
@@ -13,8 +16,17 @@ from pathlib import Path
 
 from .errors import ResumeError, at
 from .model import VARIANTS, Line
+from .publications import MALFORMED_INCLUDE, include_lines
 
 INCLUDE_RE = re.compile(r"^@(\S+\.md)(?:\s+\{\.(full|short)\})?\s*$")
+
+# "@<path>.json <words> [{.full}|{.short}]" (publications spec §5). The words
+# are checked by publications.include_lines.
+JSON_INCLUDE_RE = re.compile(
+    r"^@([^\s{]*\.json)((?:\s+[^\s{]+)*)(?:\s+\{\.(full|short)\})?\s*$")
+# A first word "@<path>.json", braces glued or not: a .json include attempt,
+# which must then fit JSON_INCLUDE_RE.
+_JSON_ATTEMPT_RE = re.compile(r"^@[^\s{]*\.json(?:[\s{]|$)")
 
 # "@path.md{.full}": an include whose marker is glued to the path.
 _GLUED_INCLUDE_RE = re.compile(r"^@\S+\.md\{[^{}]*\}\s*$")
@@ -49,6 +61,14 @@ def _load(path: Path, scope: frozenset[str], chain: list[Path], base: Path,
             target = Path(os.path.normpath(path.parent / m.group(1)))
             sub_scope = scope & frozenset({m.group(2)}) if m.group(2) else scope
             out.extend(_load(target, sub_scope, chain, base, include_line=line))
+            continue
+        if _JSON_ATTEMPT_RE.match(text):
+            m = JSON_INCLUDE_RE.match(text)
+            if not m:
+                raise at(line, MALFORMED_INCLUDE)
+            target = Path(os.path.normpath(path.parent / m.group(1)))
+            sub_scope = scope & frozenset({m.group(3)}) if m.group(3) else scope
+            out.extend(include_lines(target, m.group(2).split(), line, sub_scope))
             continue
         if text.startswith("@"):
             stripped = text.rstrip()
