@@ -20,13 +20,13 @@ from .publications import MALFORMED_INCLUDE, include_lines
 
 INCLUDE_RE = re.compile(r"^@(\S+\.md)(?:\s+\{\.(full|short)\})?\s*$")
 
-# "@<path>.json <words> [{.full}|{.short}]" (publications spec §5). The words
-# are checked by publications.include_lines.
+# "@<path>.json <words> [{.full}|{.short}]" (publications spec §5). The path
+# may hold braces; the words are checked by publications.include_lines.
 JSON_INCLUDE_RE = re.compile(
-    r"^@([^\s{]*\.json)((?:\s+[^\s{]+)*)(?:\s+\{\.(full|short)\})?\s*$")
-# A first word "@<path>.json", braces glued or not: a .json include attempt,
-# which must then fit JSON_INCLUDE_RE.
-_JSON_ATTEMPT_RE = re.compile(r"^@[^\s{]*\.json(?:[\s{]|$)")
+    r"^@(\S*\.json)((?:\s+[^\s{]+)*)(?:\s+\{\.(full|short)\})?\s*$")
+# A first word that ends in ".json", or in ".json{..." (a glued marker): a .json
+# include attempt, which must then fit JSON_INCLUDE_RE (clarification 17).
+_JSON_ATTEMPT_RE = re.compile(r"^@\S*\.json(?:\{\S*)?(?:\s|$)")
 
 # "@path.md{.full}": an include whose marker is glued to the path.
 _GLUED_INCLUDE_RE = re.compile(r"^@\S+\.md\{[^{}]*\}\s*$")

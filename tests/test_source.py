@@ -227,6 +227,19 @@ class SourceTest(unittest.TestCase):
             ("@../shared/p.json first-author first-author journal", MALFORMED),
             ("@../shared/p.json journal first-author first-author", MALFORMED),
             ("@../shared/p.json first-author journal", MALFORMED),
+            # clarification 17: braces inside the path are part of it; braces
+            # glued after the .json suffix are an error, never Markdown.
+            ("@../shared/p{x}.json selected",
+             'unknown word "selected" in a .json include; '
+             "use journal, conference or first-author"),
+            ("@../shared/p{x}.json journal",
+             f"included file not found: {self.d / 'shared' / 'p{x}.json'}"),
+            ("@../shared/p{x}.json{.full}", MALFORMED),
+            ("@../shared/p.json{x}", MALFORMED),
+            ("@../shared/p.json{x} journal", MALFORMED),
+            ("@../shared/p.json{", MALFORMED),
+            ("@../shared/p.json{.full} journal", MALFORMED),
+            ("@../shared/p.json journal{.full}", MALFORMED),
         ]
         for include, message in cases:
             with self.subTest(include):
@@ -234,6 +247,15 @@ class SourceTest(unittest.TestCase):
                 with self.assertRaises(ResumeError) as cm:
                     load_lines(md)
                 self.assertEqual(str(cm.exception), f"{md}:2: {message}")
+
+    def test_json_include_path_with_braces(self):   # clarification 17
+        root = self.write("en/resume.md", "@../shared/papers{archive}.json journal {.short}\n")
+        p = self.write("shared/papers{archive}.json", PUBS_JSON)
+        self.assertEqual([(l.text, l.path, l.lineno, l.scope) for l in load_lines(root)], [
+            ("- A journal paper, *IEEE Transactions on Circuits and Systems I: "
+             "Regular Papers*, Mar. 2016.", p, 15, frozenset({"short"})),
+            ("  Y. Kim and Junyoung Park.", p, 15, frozenset({"short"})),
+        ])
 
     def test_json_error_points_into_json(self):
         root = self.write("en/resume.md", "@../shared/p.json journal\n")
