@@ -1,4 +1,5 @@
 import json
+import string
 import sys
 import tempfile
 import unittest
@@ -9,8 +10,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from resumegen import ResumeError  # noqa: E402
 from resumegen.model import VARIANTS, Line  # noqa: E402
+from resumegen.parse import parse  # noqa: E402
 from resumegen.publications import (KNOWN_FIELDS, REQUIRED_FIELDS,  # noqa: E402
-                                    Publication, Venue, load_publications)
+                                    Publication, Publications, Venue, escape,
+                                    format_item, load_publications, select,
+                                    short_name)
+from resumegen.render import Emph, Text, parse_inline, plain_text  # noqa: E402
+from resumegen.variants import filter_variant  # noqa: E402
 
 OWNER = "Junyoung Park"
 TCAS_ID = '"id": "tcas1-2016-kim"'
@@ -346,6 +352,146 @@ class LoadTest(TempDirTest):
             item = schema["$defs"][item["$ref"].removeprefix("#/$defs/")]
         self.assertEqual(set(item["required"]), REQUIRED_FIELDS)
         self.assertEqual(set(item["properties"]), KNOWN_FIELDS)
+
+
+def pub(**fields) -> Publication:
+    """A conference paper by the owner, Feb. 2013, with `fields` changed."""
+    base = dict(id="isscc-2013-park", type="conference", title="Title",
+                authors=(OWNER,), venue=Venue("Venue"), year=2013, month=2)
+    base.update(fields)
+    return Publication(**base)
+
+
+TCAS_PUB = Publication(
+    id="tcas1-2016-kim", type="journal",
+    title="A 0.5 V 54 μW Ultra-Low-Power Object Matching Processor "
+          "for Micro Air Vehicle Navigation",
+    authors=("Youchang Kim", "Injoon Hong", "Junyoung Park", "Hoi-Jun Yoo"),
+    venue=Venue("IEEE Transactions on Circuits and Systems I: Regular Papers", "TCAS-I"),
+    year=2016, month=3, volume="63", issue="3", pages="359-369",
+    url="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7420681&isnumber=7447839")
+
+ISSCC_PUB = Publication(
+    id="isscc-2013-park", type="conference",
+    title="A 646GOPS/W multi-classifier many-core processor with cortex-like "
+          "architecture for super-resolution recognition",
+    authors=("Junyoung Park", "I. Hong", "G. Kim", "Y. Kim", "K. Lee", "S. Park",
+             "K. Bong", "H.-J. Yoo"),
+    venue=Venue("IEEE International Solid-State Circuits Conference", "ISSCC"),
+    year=2013, month=2, doi="10.1109/ISSCC.2013.6487685",
+    url="https://dx.doi.org/10.1109/ISSCC.2013.6487685")
+
+
+def parsed_items(*lines: str, variant: str = "short"):
+    """Parse `lines` as the body of a one-section resume; return its items."""
+    texts = ["---", "name: Test Person", "---", "## S", *lines]
+    path = Path("p.json")
+    doc = parse([Line(text=t, path=path, lineno=n, scope=VARIANTS)
+                 for n, t in enumerate(texts, start=1)])
+    return [child for section in filter_variant(doc, variant).sections
+            for child in section.children]
+
+
+class FormatTest(unittest.TestCase):
+    def test_select_order(self):
+        items = (pub(id="nov-2012", year=2012, month=11),
+                 pub(id="y-2013", month=None),
+                 pub(id="feb-a", month=2),
+                 pub(id="sep-2013", month=9),
+                 pub(id="journal", type="journal", year=2020),
+                 pub(id="not-first", authors=("A. Kim", OWNER), year=2019),
+                 pub(id="feb-b", month=2))
+        pubs = Publications(path=Path("p.json"), owner=OWNER, items=items)
+        self.assertEqual([p.id for p in select(pubs, "conference", False)],
+                         ["not-first", "sep-2013", "feb-a", "feb-b", "y-2013",
+                          "nov-2012"])
+        self.assertEqual([p.id for p in select(pubs, "conference", True)],
+                         ["sep-2013", "feb-a", "feb-b", "y-2013", "nov-2012"])
+        self.assertEqual([p.id for p in select(pubs, "journal", False)], ["journal"])
+
+    def test_journal_line(self):
+        self.assertEqual(format_item(TCAS_PUB, OWNER), (
+            "- A 0.5 V 54 μW Ultra-Low-Power Object Matching Processor for Micro Air "
+            "Vehicle Navigation, *IEEE Transactions on Circuits and Systems I: Regular "
+            "Papers*, vol.63, no.3, pp.359-369, Mar. 2016.",
+            "  Y. Kim, I. Hong, Junyoung Park, and H.-J. Yoo."))
+
+    def test_conference_line(self):
+        self.assertEqual(format_item(ISSCC_PUB, OWNER), (
+            "- A 646GOPS/W multi-classifier many-core processor with cortex-like "
+            "architecture for super-resolution recognition, *IEEE International "
+            "Solid-State Circuits Conference*, Feb. 2013.",
+            "  Junyoung Park, I. Hong, G. Kim, Y. Kim, K. Lee, S. Park, K. Bong, "
+            "and H.-J. Yoo."))
+
+    def test_missing_parts_drop_label_and_comma(self):
+        self.assertEqual(format_item(pub(pages="1-3"), OWNER)[0],
+                         "- Title, *Venue*, pp.1-3, Feb. 2013.")
+        self.assertEqual(format_item(pub(volume="PP", issue="99"), OWNER)[0],
+                         "- Title, *Venue*, vol.PP, no.99, Feb. 2013.")
+
+    def test_dates(self):
+        self.assertTrue(format_item(pub(year=2012, month=11, month_end=12), OWNER)[0]
+                        .endswith(", Nov.-Dec. 2012."))
+        self.assertTrue(format_item(pub(year=2012, month=None), OWNER)[0]
+                        .endswith("*Venue*, 2012."))
+        names = [format_item(pub(month=m), OWNER)[0].split(", ")[-1].removesuffix(" 2013.")
+                 for m in range(1, 13)]
+        self.assertEqual(" ".join(names),
+                         "Jan. Feb. Mar. Apr. May June July Aug. Sept. Oct. Nov. Dec.")
+
+    def test_authors(self):
+        self.assertEqual(format_item(pub(authors=(OWNER,)), OWNER)[1], "  Junyoung Park.")
+        self.assertEqual(format_item(pub(authors=(OWNER, "Hoi-Jun Yoo")), OWNER)[1],
+                         "  Junyoung Park and H.-J. Yoo.")
+        self.assertEqual(format_item(pub(authors=("Hoi-Jun Yoo", OWNER)), "Hoi-Jun Yoo")[1],
+                         "  Hoi-Jun Yoo and J. Park.")
+
+    def test_short_name(self):   # Review Focus 2
+        cases = {
+            "Seongwook Park": "S. Park",
+            "Hoi-Jun Yoo": "H.-J. Yoo",
+            "Kyuho Jason Lee": "K. J. Lee",
+            "H.-J. Yoo": "H.-J. Yoo",
+            "K.J. Lee": "K.J. Lee",
+            "Émile Zola": "É. Zola",
+            "E\u0301mile Zola": "E\u0301. Zola",     # decomposed accent
+            "Plato": "Plato",
+            "홍 길동": "홍. 길동",
+            "박준영": "박준영",
+            "Jean--Paul Sartre": "J.--P. Sartre",
+        }
+        for name, short in cases.items():
+            with self.subTest(name):
+                self.assertEqual(short_name(name), short)
+
+    def test_escape(self):
+        self.assertEqual(escape("a\\b*c_d[e]f|g{h}i"), "a\\\\b\\*c\\_d\\[e\\]f\\|g\\{h}i")
+
+    def test_escape_round_trip(self):   # Review Focus 1, clarifications 3 and 12
+        probes = [("Title {.full}", "Venue {.full}"), ("Venue*", "Venue*"),
+                  ("*Venue", "*Venue"), ("_Venue_", "_Venue_"), ("a | b", "c | d")]
+        for c in string.punctuation:
+            probes += [(f"a{c}b {c} c{c}", "Venue"), ("Title", f"a{c}b {c} c{c}"),
+                       (f"{c}Title{c}", f"{c}Venue{c}"), (c, c), (c * 2, c * 2)]
+        for title, venue in probes:
+            with self.subTest(title=title, venue=venue):
+                bullet, detail = format_item(pub(title=title, venue=Venue(venue)), OWNER)
+                items = parsed_items(bullet, detail)
+                self.assertEqual(len(items), 1)
+                item = items[0]
+                self.assertIsNone(item.date)
+                self.assertEqual(item.details, ["Junyoung Park."])
+                nodes = parse_inline(item.text)
+                self.assertEqual(nodes, (Text(f"{title}, "), Emph((Text(venue),)),
+                                         Text(", Feb. 2013.")))
+                self.assertEqual(plain_text(nodes), f"{title}, {venue}, Feb. 2013.")
+
+    def test_escaped_marker_at_line_end_stays(self):   # clarification 12
+        items = parsed_items("- " + escape("Title {.full}"), "  " + escape("A {.short}"))
+        self.assertEqual(len(items), 1)
+        self.assertEqual(plain_text(parse_inline(items[0].text)), "Title {.full}")
+        self.assertEqual(plain_text(parse_inline(items[0].details[0])), "A {.short}")
 
 
 if __name__ == "__main__":

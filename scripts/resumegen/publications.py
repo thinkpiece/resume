@@ -1,6 +1,8 @@
 """Read publications.json (publications spec §4-§6).
 
 - load_publications(): read, check and locate every item of the data file.
+- select(): the items of one type, newest first.
+- format_item(): one item as the two Markdown lines of the resume lists.
 
 Every item remembers the line of its own "id" key (or of its opening "{" when
 it has none), so errors point into the JSON file.
@@ -10,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +30,11 @@ _ID_RE = re.compile(r"[a-z0-9-]+")
 _CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 _WS_RE = re.compile(r"[ \t\n\r]*")
 _DECODER = json.JSONDecoder()
+
+MONTHS = ("Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.", "Sept.",
+          "Oct.", "Nov.", "Dec.")
+# Characters the resume Markdown dialect gives a meaning (spec §6).
+_SPECIAL = frozenset("\\*_[]|{")
 
 
 @dataclass(frozen=True)
@@ -183,6 +191,81 @@ def _text(value, name: str) -> str:
 
 def _is_int(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+# --------------------------------------------------------------------------
+# Selecting and formatting
+
+def select(pubs: Publications, type_: str, first_author: bool) -> list[Publication]:
+    """The items of `type_`, newest first; with `first_author`, only those whose
+    first author is the owner. Items without a month come last within their
+    year; ties keep file order."""
+    chosen = [p for p in pubs.items
+              if p.type == type_ and (not first_author or p.authors[0] == pubs.owner)]
+    return sorted(chosen, key=lambda p: (p.year, p.month or 0), reverse=True)
+
+
+def format_item(pub: Publication, owner: str) -> tuple[str, str]:
+    """The bullet line and the indented author line of one item (spec §6)."""
+    parts = [escape(pub.title), _emphasis(escape(pub.venue.name))]
+    for label, value in (("vol.", pub.volume), ("no.", pub.issue), ("pp.", pub.pages)):
+        if value is not None:
+            parts.append(label + escape(value))
+    parts.append(_date(pub))
+    names = [escape(a if a == owner else short_name(a)) for a in pub.authors]
+    return "- " + ", ".join(parts) + ".", "  " + _join_names(names) + "."
+
+
+def short_name(name: str) -> str:
+    """Initials plus family name: "Hoi-Jun Yoo" -> "H.-J. Yoo".
+
+    The family name is the last word. A one-word name, or one whose earlier
+    words already end in ".", is returned unchanged.
+    """
+    words = name.split()
+    if len(words) < 2 or any(w.endswith(".") for w in words[:-1]):
+        return name
+    return " ".join([_initials(w) for w in words[:-1]] + [words[-1]])
+
+
+def escape(text: str) -> str:
+    """Backslash every character the resume Markdown dialect would interpret."""
+    return "".join("\\" + c if c in _SPECIAL else c for c in text)
+
+
+def _initials(word: str) -> str:
+    return "-".join(_first_letter(part) + "." if part else part
+                    for part in word.split("-"))
+
+
+def _first_letter(part: str) -> str:
+    """The first character with any combining marks that follow it."""
+    end = 1
+    while end < len(part) and unicodedata.combining(part[end]):
+        end += 1
+    return part[:end]
+
+
+def _emphasis(text: str) -> str:
+    # The inline parser never closes "*" right after another "*", even an
+    # escaped one, so a venue ending in "*" is wrapped in "_" instead.
+    delim = "_" if text.endswith("*") else "*"
+    return delim + text + delim
+
+
+def _date(pub: Publication) -> str:
+    if pub.month is None:
+        return str(pub.year)
+    month = MONTHS[pub.month - 1]
+    if pub.month_end is not None:
+        month += "-" + MONTHS[pub.month_end - 1]
+    return f"{month} {pub.year}"
+
+
+def _join_names(names: list[str]) -> str:
+    if len(names) <= 2:
+        return " and ".join(names)
+    return ", ".join(names[:-1]) + ", and " + names[-1]
 
 
 # --------------------------------------------------------------------------
