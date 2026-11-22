@@ -1,7 +1,8 @@
 """The Markdown examples in README.md, copied as-is, give the documented result.
 
-Each example in the README is a ```markdown block preceded by an
-`<!-- example: NAME -->` line.
+Each example in the README is a ```markdown (or ```json) block preceded by an
+`<!-- example: NAME -->` line. The `paper` example is one item of
+content/shared/publications.json.
 """
 
 import os
@@ -22,12 +23,19 @@ from resumegen.parse import parse  # noqa: E402
 from resumegen.source import load_lines  # noqa: E402
 from resumegen.variants import filter_variant  # noqa: E402
 
-_EXAMPLE_RE = re.compile(r"^<!-- example: (\S+) -->\n```markdown\n(.*?)^```", re.M | re.S)
+_EXAMPLE_RE = re.compile(r"^<!-- example: (\S+) -->\n```(?:markdown|json)\n(.*?)^```",
+                         re.M | re.S)
 
 
 def readme_examples() -> dict:
     text = (REPO / "README.md").read_text(encoding="utf-8")
     return {name: body for name, body in _EXAMPLE_RE.findall(text)}
+
+
+def publications_file(*items: str) -> str:
+    """A publications.json holding the README's item examples."""
+    return ('{"schema": 1, "owner": "Junyoung Park", "publications": [\n'
+            + ",\n".join(items) + "]}\n")
 
 
 class ReadmeExamplesTest(unittest.TestCase):
@@ -116,14 +124,15 @@ class ReadmeExamplesTest(unittest.TestCase):
         })
 
     def test_include_and_shared_paper(self):
-        self.write("shared/journals.md", self.ex["paper"])
+        self.write("shared/publications.json", publications_file(self.ex["paper"]))
         full = self.doc("front-matter", "include", variant="full")
         self.assertEqual([s.title for s in full.sections], ["Publications"])
         entry = full.sections[0].children[0]
         self.assertEqual(entry.title, "Journal Papers")
         self.assertEqual([(i.text, i.details) for i in entry.items], [(
-            "Title of the Paper, *IEEE Journal of Solid-State Circuits*, vol. 1, pp. 1-10, 2026.",
-            ["A. Kim, Junyoung Park, B. Lee."])])
+            "Title of the Paper, *IEEE Journal of Solid-State Circuits*, vol.1, pp.1-10, "
+            "Jan. 2026.",
+            ["A. Kim, Junyoung Park, and B. Lee."])])
         self.assertIn('#hl("Junyoung Park")', emit_typst(full))
         self.assertEqual(self.doc("front-matter", "include", variant="short").sections, [])
 
@@ -145,7 +154,8 @@ class ReadmeExamplesTest(unittest.TestCase):
             shutil.copy(REPO / "tests" / "fixtures" / "cli" / "stub_template.typ",
                         root / "template" / "resume.typ")
         (root / "content" / "shared").mkdir(parents=True)
-        (root / "content" / "shared" / "journals.md").write_text(self.ex["paper"], encoding="utf-8")
+        (root / "content" / "shared" / "publications.json").write_text(
+            publications_file(self.ex["paper"]), encoding="utf-8")
         (root / "content" / "en").mkdir()
         src = root / "content" / "en" / "resume.md"
         src.write_text("".join(self.ex[n] for n in ("front-matter", "body", "variants", "include")),

@@ -9,7 +9,7 @@ multi-page resume) and **short** (a one-page summary).
 ```
 content/en/resume.md ─┐                           ┌─ template/resume.typ ─ typst ─▶ …_en_full.pdf
 content/ko/resume.md ─┼─ scripts/build_resume.py ─┼─ HTML writer ─────────────────▶ …_en_full.html
-content/shared/*.md  ─┘        (Python)           └─ DOCX writer ─────────────────▶ …_en_full.docx
+content/shared/*     ─┘        (Python)           └─ DOCX writer ─────────────────▶ …_en_full.docx
 ```
 
 The extension of the output file picks the format. Content edits only ever
@@ -88,8 +88,8 @@ Differences from the PDF:
 content/
   en/resume.md            English resume (root file)
   ko/resume.md            Korean resume (root file)
-  shared/journals.md      journal papers      (bullets only, included by both)
-  shared/conferences.md   conference papers   (bullets only)
+  shared/publications.json         journal and conference papers (data, see below)
+  shared/publications.schema.json  its format as a JSON Schema
   shared/talks.md         invited talks       (bullets only)
   shared/patents.md       patents             (bullets only)
 template/
@@ -200,6 +200,7 @@ must be the last thing on the line, after the date part:
 | `- bullet {.full}` | the bullet and its detail lines |
 | subtitle or paragraph | that line |
 | `@file.md {.full}` | everything the file (and its includes) brings in |
+| `@file.json journal {.full}` | the papers the include brings in |
 
 <!-- example: variants -->
 ```markdown
@@ -238,38 +239,112 @@ A line holding only `@path.md` (optionally followed by a marker) is replaced
 by that file's lines. Paths are relative to the including file. Includes nest;
 a cycle or a missing file is an error that names the file and line.
 
+A line `@path.json <type> [first-author]` (optionally followed by a marker) is
+replaced by papers from the publications data file, formatted as bullets (see
+[Publications data](#publications-data)):
+
 <!-- example: include -->
 ```markdown
 ## Publications {.full}
 ### Journal Papers
-@../shared/journals.md {.full}
+@../shared/publications.json journal {.full}
 ```
 
-Written in `content/en/resume.md`, this pulls in every bullet of
-`content/shared/journals.md`, in the full PDF only. The shared lists hold
-bullets only, so each language writes its own headings (`### 국제 저널 논문`
-in the Korean file includes the same `journals.md`).
+Written in `content/en/resume.md`, this pulls in every journal paper of
+`content/shared/publications.json`, in the full variant only. The shared files
+hold no headings, so each language writes its own (`### 국제 저널 논문` in the
+Korean file includes the same papers).
+
+## Publications data
+
+Journal and conference papers live in one structured file,
+`content/shared/publications.json`, so that other generators (a homepage, a
+form) can read the same data and format it their own way.
+`publications.schema.json` next to it describes the format for editors and
+other tools.
+
+```
+{
+  "$schema": "./publications.schema.json",
+  "schema": 1,
+  "owner": "Junyoung Park",
+  "publications": [ {one object per paper, in any order}, ... ]
+}
+```
+
+`schema` is the format version (1). `owner` is your name exactly as it is
+written in `authors`. Each paper has these fields:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `id` | yes | Stable key, `<short venue>-<year>-<first author family name>` (`-2` on a clash); lowercase letters, digits and `-`; never changed once written |
+| `type` | yes | `journal` or `conference` |
+| `title` | yes | As published |
+| `authors` | yes | List in paper order; full names when known (`Seongwook Park`), otherwise as known (`S. Park`); you exactly as `owner` |
+| `venue` | yes | `{"name": "IEEE Journal of Solid-State Circuits", "short": "JSSC"}`: full name in natural order; `short` is optional |
+| `year` | yes | Integer |
+| `month` | no | Integer 1-12 |
+| `month_end` | no | Last month of a multi-month issue (`11` and `12` print `Nov.-Dec.`); only with `month` |
+| `volume`, `issue`, `pages` | no | Strings: `"63"`, `"3"`, `"359-369"` |
+| `location` | no | Conference city |
+| `doi` | no | Without a URL prefix: `10.1109/ISSCC.2013.6487685` |
+| `url` | no | Link to the paper |
+
+Every text is one line without leading or trailing spaces. Fields not in the
+table are allowed and ignored by the resume. A mistake (a missing field, a
+month of 13, a duplicate `id`, your name missing from `authors`, broken JSON)
+stops the build with the file, the line and the paper's `id`.
+
+The include line takes exactly one type, then optionally `first-author`, which
+keeps the papers whose first author is `owner`; a marker comes last:
+
+```markdown
+@../shared/publications.json journal {.full}
+@../shared/publications.json conference first-author {.full}
+```
+
+Papers print newest first (by year and month; papers without a month last in
+their year), two lines each, the same in both languages:
+
+```markdown
+- A 0.5 V 54 μW Ultra-Low-Power Object Matching Processor for Micro Air Vehicle Navigation, *IEEE Transactions on Circuits and Systems I: Regular Papers*, vol.63, no.3, pp.359-369, Mar. 2016.
+  Y. Kim, I. Hong, Junyoung Park, and H.-J. Yoo.
+```
+
+Missing parts drop out with their label. Co-authors print as initials and
+family name; your name prints as written and is highlighted. Characters that
+mean something in Markdown (`*`, `_`, `|`, …) print as written.
 
 ## Common edits
 
-**Add a talk or paper.** Add one bullet to the shared list, newest first; both
-languages pick it up on the next `make`:
+**Add a talk.** Add one bullet to `content/shared/talks.md`, newest first;
+both languages pick it up on the next `make`:
 
 <!-- example: talk -->
 ```markdown
 - Title of the Talk, *Venue Name*, Dec., 2026.
 ```
 
-Papers take the author line as an indented detail line (your name is
-highlighted automatically):
+**Add a paper.** Add one object to the `publications` list of
+`content/shared/publications.json` (any position; the resume sorts by date):
 
 <!-- example: paper -->
-```markdown
-- Title of the Paper, *IEEE Journal of Solid-State Circuits*, vol. 1, pp. 1-10, 2026.
-  A. Kim, Junyoung Park, B. Lee.
+```json
+{
+  "id": "jssc-2026-kim",
+  "type": "journal",
+  "title": "Title of the Paper",
+  "authors": ["Ahyoung Kim", "Junyoung Park", "Byungho Lee"],
+  "venue": {"name": "IEEE Journal of Solid-State Circuits", "short": "JSSC"},
+  "year": 2026, "month": 1,
+  "volume": "1", "pages": "1-10"
+}
 ```
 
-Then update the counts in the summary lines (`{.short}`) if they mention them.
+It prints as `Title of the Paper, IEEE Journal of Solid-State Circuits, vol.1,
+pp.1-10, Jan. 2026.` with `A. Kim, Junyoung Park, and B. Lee.` below it.
+Then update the paper counts written by hand in both resumes: the summary, the
+conference heading and the short variant's research output.
 
 **Switch fonts.** Change the `font:` line of the root file, e.g.
 `font: Charter, NanumMyeongjo` (English) or `font: Pretendard` (Korean). The

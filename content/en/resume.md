@@ -15,7 +15,7 @@ linkedin: https://www.linkedin.com/in/parkjunyoung
 ## Summary
 
 - AI semiconductor (SoC) specialist with a Ph.D. in Electrical Engineering from KAIST and 10 years of experience running the company since founding it (2015 – Present).
-- Specializes in low-power AI and vision SoC design, with 35 international journal and conference papers, 18 registered patents, and a presentation and demonstration at ISSCC.
+- Specializes in low-power AI and vision SoC design, with 36 international journal and conference papers, 18 registered patents, and a presentation and demonstration at ISSCC.
 - Led 20+ R&D projects with industry, academia, and research institutes, connecting research to commercialization, and delivered around 20 invited talks.
 
 ## Work Experience
@@ -69,10 +69,10 @@ Research Intern
 ## Publications {.full}
 
 ### Journal Papers
-@../shared/journals.md {.full}
+@../shared/publications.json journal {.full}
 
-### Conference Papers (First Authored Only - 25 Papers in Total)
-@../shared/conferences.md {.full}
+### Conference Papers (First Authored Only - 26 Papers in Total)
+@../shared/publications.json conference first-author {.full}
 
 ### Patents
 @../shared/patents.md {.full}
@@ -80,5 +80,5 @@ Research Intern
 ## Research Output {.short}
 
 ### Papers and Patents
-- 10 international journal papers (including IEEE JSSC) and 25 international conference papers (including ISSCC, CICC, and A-SSCC).
+- 10 international journal papers (including IEEE JSSC) and 26 international conference papers (including ISSCC, CICC, and A-SSCC).
 - 18 patents registered in Korea and abroad in AI, image processing, and semiconductor testing.
