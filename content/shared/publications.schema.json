@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Publications",
+  "description": "Journal and conference papers as structured fields; each generator formats them its own way. Fields not listed here are allowed and ignored by the resume generator. Standard JSON only: no NaN or Infinity, no lone surrogate escapes. The resume build also checks what a schema cannot: ids are unique, month_end is after month, and the owner is among each item's authors.",
+  "type": "object",
+  "required": ["schema", "owner", "publications"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schema": {"const": 1, "description": "Version of this format. A reader rejects a version it does not know."},
+    "owner": {"$ref": "#/$defs/text", "description": "The person the file belongs to, exactly as the name appears in authors."},
+    "publications": {"type": "array", "items": {"$ref": "#/$defs/publication"}}
+  },
+  "$defs": {
+    "text": {
+      "description": "One line of text: not empty, no control character, no leading or trailing whitespace.",
+      "type": "string",
+      "pattern": "^[^\\s\\u0000-\\u001F\\u007F](?:[^\\u0000-\\u001F\\u007F]*[^\\s\\u0000-\\u001F\\u007F])?$"
+    },
+    "month": {"type": "integer", "minimum": 1, "maximum": 12},
+    "publication": {
+      "type": "object",
+      "required": ["id", "type", "title", "authors", "venue", "year"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9-]+$", "description": "Stable key, <short venue>-<year>-<first author family name>; never changes once written."},
+        "type": {"enum": ["journal", "conference"]},
+        "title": {"$ref": "#/$defs/text", "description": "As published."},
+        "authors": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}, "description": "Paper order; full names when known."},
+        "venue": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {"$ref": "#/$defs/text", "description": "Full name in natural order."},
+            "short": {"$ref": "#/$defs/text", "description": "Short name such as JSSC or ISSCC."}
+          }
+        },
+        "year": {"type": "integer"},
+        "month": {"$ref": "#/$defs/month"},
+        "month_end": {"$ref": "#/$defs/month", "description": "Last month of a multi-month issue; only with month, and after it."},
+        "volume": {"$ref": "#/$defs/text"},
+        "issue": {"$ref": "#/$defs/text"},
+        "pages": {"$ref": "#/$defs/text"},
+        "location": {"$ref": "#/$defs/text", "description": "Conference city."},
+        "doi": {"$ref": "#/$defs/text", "description": "Without a URL prefix."},
+        "url": {"$ref": "#/$defs/text"}
+      }
+    }
+  }
+}
