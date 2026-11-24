@@ -1,6 +1,7 @@
-# Build the resume PDFs from content/ (Markdown) through Typst.
-#   make            all four PDFs in build/
-#   make en-short   one of them (en-full, en-short, ko-full, ko-short)
+# Build the resume from content/ (Markdown) as PDF (through Typst), HTML and DOCX.
+#   make            all twelve files in build/ (en, ko × full, short × pdf, html, docx)
+#   make pdf        the four PDFs (also: make html, make docx)
+#   make en-short   one variant in all three formats (en-full, en-short, ko-full, ko-short)
 #   make test       unit tests
 #   make clean      remove build/
 
@@ -8,28 +9,31 @@ PYTHON ?= python3
 BUILD := build
 NAME := Resume_JunyoungPark
 
-EN_FULL  := $(BUILD)/$(NAME)_en_full.pdf
-EN_SHORT := $(BUILD)/$(NAME)_en_short.pdf
-KO_FULL  := $(BUILD)/$(NAME)_ko_full.pdf
-KO_SHORT := $(BUILD)/$(NAME)_ko_short.pdf
-PDFS := $(EN_FULL) $(EN_SHORT) $(KO_FULL) $(KO_SHORT)
+VARIANTS := en_full en_short ko_full ko_short
+PDFS  := $(VARIANTS:%=$(BUILD)/$(NAME)_%.pdf)
+HTMLS := $(VARIANTS:%=$(BUILD)/$(NAME)_%.html)
+DOCXS := $(VARIANTS:%=$(BUILD)/$(NAME)_%.docx)
 
-.PHONY: all en-full en-short ko-full ko-short test clean FORCE
+.PHONY: all pdf html docx en-full en-short ko-full ko-short test clean FORCE
 
-all: $(PDFS)
+all: $(PDFS) $(HTMLS) $(DOCXS)
 
-en-full: $(EN_FULL)
-en-short: $(EN_SHORT)
-ko-full: $(KO_FULL)
-ko-short: $(KO_SHORT)
+pdf: $(PDFS)
+html: $(HTMLS)
+docx: $(DOCXS)
 
-# The PDFs always rebuild: Typst takes well under a second, and a file-list
-# prerequisite would miss a deleted or renamed @include.
-$(BUILD)/$(NAME)_%_full.pdf: FORCE
-	$(PYTHON) scripts/build_resume.py content/$*/resume.md --variant full -o $@
+en-full:  $(addprefix $(BUILD)/$(NAME)_en_full.,pdf html docx)
+en-short: $(addprefix $(BUILD)/$(NAME)_en_short.,pdf html docx)
+ko-full:  $(addprefix $(BUILD)/$(NAME)_ko_full.,pdf html docx)
+ko-short: $(addprefix $(BUILD)/$(NAME)_ko_short.,pdf html docx)
 
-$(BUILD)/$(NAME)_%_short.pdf: FORCE
-	$(PYTHON) scripts/build_resume.py content/$*/resume.md --variant short -o $@
+# Every output always rebuilds: each takes well under a second, and a
+# file-list prerequisite would miss a deleted or renamed @include.
+# The stem is <lang>_<variant>.<ext>, e.g. ko_short.docx; build_resume.py
+# picks the format from the extension.
+$(BUILD)/$(NAME)_%: FORCE
+	$(PYTHON) scripts/build_resume.py content/$(word 1,$(subst _, ,$*))/resume.md \
+		--variant $(basename $(word 2,$(subst _, ,$*))) -o $@
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v

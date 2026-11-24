@@ -1,49 +1,86 @@
 Resume
 ======
 
-My resume, written as Markdown and rendered to PDF with [Typst](https://typst.app).
+My resume, written as Markdown and rendered to PDF with [Typst](https://typst.app),
+to a self-contained HTML page, and to a Word document (DOCX).
 One Markdown file per language produces two variants: **full** (the long,
 multi-page resume) and **short** (a one-page summary).
 
 ```
-content/en/resume.md ─┐                        build/Resume_JunyoungPark_en_full.pdf
-content/ko/resume.md ─┼─ scripts/build_resume.py ─ template/resume.typ ─ typst ─▶ …_en_short.pdf
-content/shared/*.md  ─┘        (Python)              (layout)                   …_ko_full.pdf / …_ko_short.pdf
+content/en/resume.md ─┐                           ┌─ template/resume.typ ─ typst ─▶ …_en_full.pdf
+content/ko/resume.md ─┼─ scripts/build_resume.py ─┼─ HTML writer ─────────────────▶ …_en_full.html
+content/shared/*.md  ─┘        (Python)           └─ DOCX writer ─────────────────▶ …_en_full.docx
 ```
 
-Content edits only ever touch `content/`. Layout lives only in `template/resume.typ`.
+The extension of the output file picks the format. Content edits only ever
+touch `content/`. The PDF layout lives in `template/resume.typ`; the HTML and
+DOCX writers follow it (see [HTML and DOCX](#html-and-docx)).
 
 ## Prerequisites
 
-- Typst 0.15 or later: `brew install typst`
+- Typst 0.15 or later, for the PDF only: `brew install typst`
 - Python 3.10 or later (standard library only, nothing to `pip install`)
 - Optional: poppler (`brew install poppler`) for `pdfinfo` / `pdftotext` checks
 
 ## Build
 
 ```
-make            # all four PDFs in build/
-make en-full    # or en-short, ko-full, ko-short
+make            # all twelve files in build/: en and ko, full and short, as PDF, HTML and DOCX
+make pdf        # the four PDFs (also: make html, make docx)
+make en-full    # one variant in all three formats (or en-short, ko-full, ko-short)
 make test       # unit tests
 make clean      # remove build/
 ```
 
-The PDFs always rebuild (Typst takes well under a second). Output:
-`build/Resume_JunyoungPark_{en,ko}_{full,short}.pdf`, next to the generated
-`.typ` files. `build/` is git-ignored; no PDF is committed.
+Every file always rebuilds (each takes well under a second). Output:
+`build/Resume_JunyoungPark_{en,ko}_{full,short}.{pdf,html,docx}`, the PDFs next
+to their generated `.typ` files. `build/` is git-ignored; no output is committed.
 
-One PDF by hand:
+One file by hand. The extension of `-o` picks the format: `.pdf`, `.html` or
+`.docx` (any other extension is an error); without `-o` the output is
+`build/<source name>_<variant>.pdf`:
 
 ```
 python3 scripts/build_resume.py content/en/resume.md --variant short -o build/en_short.pdf
-python3 scripts/build_resume.py content/en/resume.md --variant full --typ-only   # write the .typ only
+python3 scripts/build_resume.py content/ko/resume.md --variant full -o build/ko_full.html
+python3 scripts/build_resume.py content/ko/resume.md --variant full -o build/ko_full.docx
+python3 scripts/build_resume.py content/en/resume.md --variant full --typ-only   # write the .typ only (PDF only)
 ```
 
-The build fails with `<file>:<line>: <message>` on any malformed line, on a
-`paper` name Typst does not know, and on a `font` that Typst cannot find; the
-last two point at their front-matter line. A failed build leaves no PDF at
-the output path. A short variant longer than one page still builds, with a
-warning that gives the page count.
+The build fails with `<file>:<line>: <message>` on any malformed line and on a
+`paper` name Typst does not know; for the PDF also on a `font` that Typst
+cannot find. The last two point at their front-matter line. A build that
+fails after it starts reading the source leaves no file at the output path; a
+bad command line (exit status 2) changes nothing, and `--typ-only` leaves the
+PDF alone. A short PDF longer than one page still builds, with a warning that
+gives the page count.
+
+### HTML and DOCX
+
+Both are written by Python alone (no Typst needed) and carry the same header,
+sections, entries, bullets, detail lines and paragraphs as the PDF, in the same
+order, with the same bold, italic, links and highlighted name.
+
+- **HTML** is one self-contained file: one inline stylesheet, no scripts, no
+  images, nothing loaded from elsewhere. On screen it is a centered column the
+  width of the paper; printed from a browser it uses the paper size and margins
+  of the PDF.
+- **DOCX** opens in Microsoft Word and Apple Pages and stays editable: every
+  part uses a named paragraph style (`ResumeName`, `ResumeSection`,
+  `ResumeEntry`, `ResumeItem`, `ResumeDetail`, …), so restyling one changes all
+  of its kind. Dates sit on a right tab stop.
+
+Differences from the PDF:
+
+- No contact icons; the contacts are text links.
+- Fonts are named, not embedded: the reader's machine needs the `font:` fonts
+  installed, or it substitutes others (HTML falls back to a generic serif or
+  sans-serif family). Page breaks and the page count can differ from the PDF,
+  and only the PDF warns about a short variant longer than one page.
+- The page size follows `paper` for the ISO A, B and C sizes (`a0`–`a11`,
+  `iso-b1`–`iso-b8`, `iso-c3`–`iso-c8`) and every `us-…` and `ansi-…` size
+  (`us-letter`, `us-statement`, `ansi-b`, …); any other Typst paper name
+  (`jis-b5`, `arch-a`, …) gives an A4 page in HTML and DOCX.
 
 ## Folder layout
 
@@ -60,10 +97,10 @@ template/
   icons/                  Font Awesome Free contact icons and their license
 scripts/
   build_resume.py         the build command
-  resumegen/              loader, parser, variant filter, Typst emitter
+  resumegen/              loader, parser, variant filter; Typst, HTML and DOCX writers
   publication_formatter.py  BibTeX → HTML helper (see below)
 tests/                    unit tests (python3 -m unittest discover -s tests)
-build/                    generated .typ and .pdf files (git-ignored)
+build/                    generated .typ, .pdf, .html and .docx files (git-ignored)
 ```
 
 ## Writing the Markdown
@@ -93,8 +130,8 @@ github: https://github.com/example
 
 `name` is required. Defaults: `lang: en`, `paper: us-letter`, `font: Charter`.
 The contact keys (`location`, `phone`, `email`, `homepage`, `linkedin`,
-`github`) print with an icon in the order written; email, phone and URLs
-become links. Any other key is an error.
+`github`) print in the order written, with an icon in the PDF; email, phone
+and URLs become links. Any other key is an error.
 
 ### Body
 
@@ -240,10 +277,14 @@ first font is the main one; later fonts fill in missing glyphs (Hangul in the
 English resume). `typst fonts` lists what Typst can see. macOS on-demand fonts
 such as NanumMyeongjo live under `/System/Library/AssetsV2/com_apple_MobileAsset_Font*`;
 the build passes those folders to Typst automatically. A font Typst cannot
-find fails the build instead of silently using another one.
+find fails the PDF build instead of silently using another one; the HTML and
+DOCX only name the fonts (see [HTML and DOCX](#html-and-docx)).
 
-**Change the layout.** Edit `template/resume.typ` only (spacing, sizes, the
-gray of the dates); the content files stay untouched.
+**Change the layout.** Edit `template/resume.typ` for the PDF (spacing, sizes,
+the gray of the dates); the content files stay untouched. The HTML and DOCX
+writers (`scripts/resumegen/emit_html.py`, `emit_docx.py`) take the sizes, gray,
+margins and paper sizes from `scripts/resumegen/render.py`; change those there
+to keep the three formats alike.
 
 ## Format publications from BibTeX
 The helper prints an HTML `<li>` list you can embed in the resume site.

@@ -8,14 +8,10 @@ them, so no resume text is ever read as Typst markup (spec §8).
 
 from __future__ import annotations
 
-import re
-import string
-
 from .model import Document, Entry, Item, Paragraph, Section
+from .render import Emph, Highlight, Node, Strong, Text, contact_url, parse_inline
 
 TEMPLATE_IMPORT = '#import "/template/resume.typ": *'
-
-_PUNCT = frozenset(string.punctuation)
 
 
 # --------------------------------------------------------------------------
@@ -51,197 +47,25 @@ def _array(values: list[str]) -> str:
     return "(" + ", ".join(values) + ")"
 
 
-def contact_url(kind: str, value: str) -> str | None:
-    if kind == "email":
-        return "mailto:" + value
-    if kind == "phone":
-        lead = "+" if value.strip().startswith("+") else ""
-        return "tel:" + lead + re.sub(r"\D", "", value)
-    if kind == "location":
-        return None
-    return value
-
-
 # --------------------------------------------------------------------------
 # Inline Markdown
 
 def inline_to_typst(text: str, highlight: str | None = None) -> str:
     """Inline Markdown (spec §4.3) → a Typst content block `[...]`."""
-    return "[" + "".join(_render(n, highlight) for n in _Inline(text).parse()) + "]"
+    return "[" + "".join(_render(n) for n in parse_inline(text, highlight)) + "]"
 
 
-def _render(node, highlight: str | None) -> str:
-    kind = node[0]
-    if kind == "text":
-        return _text_run(node[1], highlight)
-    inner = "".join(_render(n, highlight) for n in node[-1])
-    if kind == "strong":
+def _render(node: Node) -> str:
+    if isinstance(node, Text):
+        return "#" + typst_string(node.text)
+    if isinstance(node, Highlight):
+        return f"#hl({typst_string(node.text)})"
+    inner = "".join(_render(n) for n in node.children)
+    if isinstance(node, Strong):
         return f"#strong[{inner}]"
-    if kind == "emph":
+    if isinstance(node, Emph):
         return f"#emph[{inner}]"
-    return f"#link({typst_string(node[1])})[{inner}]"     # link
-
-
-def _text_run(text: str, highlight: str | None) -> str:
-    if not highlight or highlight not in text:
-        return "#" + typst_string(text)
-    out = []
-    for i, part in enumerate(text.split(highlight)):
-        if i:
-            out.append(f"#hl({typst_string(highlight)})")
-        if part:
-            out.append("#" + typst_string(part))
-    return "".join(out)
-
-
-def _is_word(c: str) -> bool:
-    return c.isalnum() or c == "_"
-
-
-class _Inline:
-    """Left-to-right tokenizer for **bold**, *italic*, _italic_, [text](url).
-
-    Nodes: ("text", str), ("strong", [nodes]), ("emph", [nodes]),
-    ("link", url, [nodes]). Unclosed or space-padded delimiters stay literal.
-    """
-
-    def __init__(self, text: str):
-        self.t = text
-
-    def parse(self, start: int = 0, end: int | None = None) -> list:
-        t = self.t
-        end = len(t) if end is None else end
-        nodes: list = []
-        buf: list[str] = []
-
-        def flush():
-            if buf:
-                nodes.append(("text", "".join(buf)))
-                buf.clear()
-
-        i = start
-        while i < end:
-            c = t[i]
-            if c == "\\":
-                if i + 1 < end and t[i + 1] in _PUNCT:
-                    buf.append(t[i + 1])
-                    i += 2
-                else:
-                    buf.append(c)
-                    i += 1
-                continue
-            if c == "[":
-                link = self._link_at(i, end)
-                if link:
-                    label_end, url, after = link
-                    flush()
-                    nodes.append(("link", url, self.parse(i + 1, label_end)))
-                    i = after
-                    continue
-            if c == "*" and self._opens(i, "**", end):
-                close = self._close(i + 2, "**", end)
-                if close is not None:
-                    flush()
-                    nodes.append(("strong", self.parse(i + 2, close)))
-                    i = close + 2
-                    continue
-            if c in "*_" and self._opens(i, c, end):
-                close = self._close(i + 1, c, end)
-                if close is not None:
-                    flush()
-                    nodes.append(("emph", self.parse(i + 1, close)))
-                    i = close + 1
-                    continue
-            buf.append(c)
-            i += 1
-        flush()
-        return nodes
-
-    # -- delimiters --------------------------------------------------------
-
-    def _opens(self, i: int, delim: str, end: int) -> bool:
-        t = self.t
-        if t[i:i + len(delim)] != delim:
-            return False
-        nxt = i + len(delim)
-        if nxt >= end or t[nxt].isspace() or t[nxt] == delim[0]:
-            return False
-        if delim == "_" and i > 0 and _is_word(t[i - 1]):
-            return False
-        if delim == "*" and i > 0 and t[i - 1] == "*":
-            return False
-        return True
-
-    def _closes(self, j: int, delim: str, start: int, end: int) -> bool:
-        t = self.t
-        if j <= start or t[j:j + len(delim)] != delim or j + len(delim) > end:
-            return False
-        prev = t[j - 1]
-        if prev.isspace() or prev == delim[0]:
-            return False
-        after = j + len(delim)
-        if delim == "_" and after < end and _is_word(t[after]):
-            return False
-        if delim == "*" and after < end and t[after] == "*":
-            return False
-        return True
-
-    def _close(self, start: int, delim: str, end: int) -> int | None:
-        """Index of the closing `delim`, skipping escapes, links and nested strong."""
-        t = self.t
-        j = start
-        while j < end:
-            c = t[j]
-            if c == "\\" and j + 1 < end and t[j + 1] in _PUNCT:
-                j += 2
-                continue
-            if c == "[":
-                link = self._link_at(j, end)
-                if link:
-                    j = link[2]
-                    continue
-            if self._closes(j, delim, start, end):
-                return j
-            if delim == "*" and self._opens(j, "**", end):
-                inner = self._close(j + 2, "**", end)
-                if inner is not None:
-                    j = inner + 2
-                    continue
-            j += 1
-        return None
-
-    def _link_at(self, i: int, end: int) -> tuple[int, str, int] | None:
-        """For "[label](url)" at i: (index of "]", url, index after ")")."""
-        t = self.t
-        j = i + 1
-        while j < end:
-            c = t[j]
-            if c == "\\" and j + 1 < end and t[j + 1] in _PUNCT:
-                j += 2
-                continue
-            if c == "[":
-                return None
-            if c == "]":
-                break
-            j += 1
-        else:
-            return None
-        label_end = j
-        if label_end + 1 >= end or t[label_end + 1] != "(":
-            return None
-        depth = 0
-        k = label_end + 2
-        while k < end:
-            c = t[k]
-            if c == "(":
-                depth += 1
-            elif c == ")":
-                if depth == 0:
-                    url = t[label_end + 2:k].strip()
-                    return (label_end, url, k + 1) if url else None
-                depth -= 1
-            k += 1
-        return None
+    return f"#link({typst_string(node.url)})[{inner}]"     # Link
 
 
 # --------------------------------------------------------------------------

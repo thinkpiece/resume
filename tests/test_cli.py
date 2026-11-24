@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import re
 import shutil
@@ -6,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "scripts" / "build_resume.py"
@@ -244,6 +247,61 @@ class CliNoTypstTest(CliTestBase):
                 self.assertEqual(r.returncode, 1, r.stderr)
                 self.assertFalse(out.exists(), r.stderr)
 
+    def test_failed_run_removes_dangling_output_symlink(self):
+        for name in ("link.pdf", "link.html", "link.docx"):
+            with self.subTest(name=name):
+                out = self.root / name
+                out.symlink_to(self.root / "nowhere" / name)
+                r = self.run_cli(self.write_src("## S\n- x {.ful}\n"), "--variant", "full",
+                                 "-o", out, path="/nonexistent")
+                self.assertEqual(r.returncode, 1, r.stderr)
+                self.assertFalse(out.is_symlink())
+
+    def test_write_keeps_neighbours_and_normal_mode(self):
+        src = self.write_src("## S\n- x\n")
+        out = self.root / "x.html"
+        neighbour = self.root / ".x.html.tmp"
+        neighbour.write_text("keep", encoding="utf-8")
+        with mock.patch.object(build_resume, "emit_html", return_value="<html>"):
+            code = build_resume.main([str(src), "--variant", "full", "-o", str(out)])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.read_text(encoding="utf-8"), "<html>")
+        self.assertEqual(neighbour.read_text(encoding="utf-8"), "keep")
+        self.assertEqual(sorted(p.name for p in self.root.iterdir() if p.name.startswith(".x")),
+                         [".x.html.tmp"])
+        self.assertEqual(out.stat().st_mode & 0o777, 0o666 & ~build_resume._umask())
+
+    def test_write_longest_file_name(self):   # the temporary name must not be longer
+        src = self.write_src("## S\n- x\n")
+        out = self.root / ("n" * 250 + ".html")
+        with mock.patch.object(build_resume, "emit_html", return_value="<html>"):
+            code = build_resume.main([str(src), "--variant", "full", "-o", str(out)])
+        self.assertEqual(code, 0)
+        self.assertTrue(out.exists())
+
+    def test_failed_write_leaves_no_output(self):
+        src = self.write_src("## S\n- x\n")
+        outdir = self.root / "ro"
+        outdir.mkdir()
+        outdir.chmod(0o500)
+        try:
+            self._check_failed_writes(src, outdir)
+        finally:
+            outdir.chmod(0o700)
+
+    def _check_failed_writes(self, src, outdir):
+        for name in ("x.html", "x.docx"):
+            with self.subTest(name=name), \
+                    mock.patch.object(build_resume, "emit_html", return_value="<html>"), \
+                    mock.patch.object(build_resume, "emit_docx", return_value=b"PK"):
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err):
+                    code = build_resume.main([str(src), "--variant", "full",
+                                              "-o", str(outdir / name)])
+                self.assertEqual(code, 1)
+                self.assertIn(f"error: could not write {outdir / name}", err.getvalue())
+                self.assertEqual(list(outdir.iterdir()), [])
+
     def test_parse_error_format(self):
         src = self.write_src("## S\n- x {.ful}\n")
         r = self.run_cli(src, "--variant", "full")
@@ -319,10 +377,30 @@ class CliNoTypstTest(CliTestBase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertRegex(r.stderr, rf"warning: {re.escape(str(src))}:5: .*can never appear")
 
-    def test_output_must_be_pdf(self):
-        r = self.run_cli(self.write_src("## S\n"), "--variant", "full", "-o", "x.png")
-        self.assertEqual(r.returncode, 2)
-        self.assertIn(".pdf", r.stderr)
+    def test_output_extension_picks_format(self):
+        self.assertEqual(build_resume.output_format(Path("a/b.pdf")), "pdf")
+        self.assertEqual(build_resume.output_format(Path("b.HTML")), "html")
+        self.assertEqual(build_resume.output_format(Path("b.Docx")), "docx")
+        for name in ("b.htm", "b.doc", "b", "b.pdf.txt"):
+            with self.subTest(name=name):
+                self.assertIsNone(build_resume.output_format(Path(name)))
+
+    def test_unknown_output_extension_names_the_three(self):
+        for name in ("x.png", "x.htm", "x"):
+            with self.subTest(name=name):
+                r = self.run_cli(self.write_src("## S\n"), "--variant", "full", "-o", name)
+                self.assertEqual(r.returncode, 2)
+                self.assertIn(".pdf, .html or .docx", r.stderr)
+                self.assertFalse((self.root / name).exists())
+
+    def test_typ_only_needs_pdf_output(self):
+        for name in ("x.html", "x.docx"):
+            with self.subTest(name=name):
+                r = self.run_cli(self.write_src("## S\n"), "--variant", "full", "-o", name,
+                                 "--typ-only")
+                self.assertEqual(r.returncode, 2)
+                self.assertIn("--typ-only", r.stderr)
+                self.assertFalse((self.root / "build").exists())
 
     def test_count_pdf_pages_fallback(self):
         pdf = self.root / "x.pdf"
